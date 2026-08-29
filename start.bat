@@ -1,0 +1,3 @@
+@echo off
+echo Iniciando JosTools...
+npm run dev
