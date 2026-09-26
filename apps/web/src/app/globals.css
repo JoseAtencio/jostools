@@ -1,17 +1,79 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --tuscan-sun-50: #fef8e6;
+  --tuscan-sun-100: #fdf1ce;
+  --tuscan-sun-200: #fce29c;
+  --tuscan-sun-300: #fad46b;
+  --tuscan-sun-400: #f9c639;
+  --tuscan-sun-500: #f7b708;
+  --tuscan-sun-600: #c69306;
+  --tuscan-sun-700: #946e05;
+  --tuscan-sun-800: #634903;
+  --tuscan-sun-900: #312502;
+
+  --graphite-50: #f3f1f2;
+  --graphite-100: #e7e4e5;
+  --graphite-200: #cfc9cb;
+  --graphite-300: #b7aeb1;
+  --graphite-400: #9f9396;
+  --graphite-500: #87787c;
+  --graphite-600: #6c6063;
+  --graphite-700: #51484b;
+  --graphite-800: #363032;
+  --graphite-900: #1b1819;
+  --graphite-950: #131111;
+
+  --raspberry-red-50: #fce9ef;
+  --raspberry-red-100: #f9d2df;
+  --raspberry-red-200: #f3a5bf;
+  --raspberry-red-300: #ed789f;
+  --raspberry-red-400: #e74b7f;
+  --raspberry-red-500: #e01f5f;
+  --raspberry-red-600: #b4184c;
+  --raspberry-red-700: #871239;
+  --raspberry-red-800: #5a0c26;
+  --raspberry-red-900: #2d0613;
+
+  --ash-grey-50: #f0f5f4;
+  --ash-grey-100: #e0ebe9;
+  --ash-grey-200: #c2d6d3;
+  --ash-grey-300: #a3c2bd;
+  --ash-grey-400: #85ada7;
+  --ash-grey-500: #669991;
+  --ash-grey-600: #527a74;
+  --ash-grey-700: #3d5c57;
+  --ash-grey-800: #293d3a;
+  --ash-grey-900: #141f1d;
+
+  --crayola-blue-50: #e5eeff;
+  --crayola-blue-100: #ccdcff;
+  --crayola-blue-200: #99b9ff;
+  --crayola-blue-300: #6696ff;
+  --crayola-blue-400: #3374ff;
+  --crayola-blue-500: #0051ff;
+  --crayola-blue-600: #0041cc;
+  --crayola-blue-700: #003099;
+  --crayola-blue-800: #002066;
+  --crayola-blue-900: #001033;
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-color: var(--graphite-950);
+  color: var(--graphite-50);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
 }
 
-main {
-  text-align: center;
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
 }

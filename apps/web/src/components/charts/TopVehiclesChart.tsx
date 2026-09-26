@@ -1,0 +1,41 @@
+"use client";
+
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
+import type { VehicleData } from "@/lib/services/indicatorService";
+import { CHART_TOOLTIP_STYLE } from "./chartStyles";
+
+const COLORS = ["#E01F5F", "#F7B708", "#669991", "#0051FF", "#A3A3A3"];
+
+interface Props {
+  data: VehicleData[];
+  onFilter?: (key: string) => void;
+  activeFilter?: string | null;
+}
+
+export default function TopVehiclesChart({ data, onFilter, activeFilter }: Props) {
+  return (
+    <div className="rounded-2xl border p-6 transition-all" style={{ backgroundColor: "var(--graphite-900)", borderColor: activeFilter ? "var(--tuscan-sun-500)" : "var(--graphite-800)" }}>
+      <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--graphite-200)" }}>Top 5 vehiculos con mas fallas</h3>
+      {data.length === 0 ? (
+        <p className="text-center py-10 text-sm" style={{ color: "var(--graphite-500)" }}>Sin datos</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#363032" />
+            <XAxis dataKey="vehicle" tick={{ fill: "#b7aeb1", fontSize: 11 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fill: "#9f9396", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+            <Tooltip
+              {...CHART_TOOLTIP_STYLE}
+              formatter={(value) => [`${value} fallas`, "Cantidad"]}
+            />
+            <Bar dataKey="fallas" radius={[6, 6, 0, 0]} onClick={(entry) => { if (onFilter) onFilter((entry as unknown as VehicleData).vehicle); }} style={{ cursor: onFilter ? "pointer" : "default" }}>
+              {data.map((entry, i) => (
+                <Cell key={i} fill={activeFilter && activeFilter !== entry.vehicle ? "#51484b" : COLORS[i % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
