@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { setUser, logout } from "@/lib/redux/slices/authSlice";
 import { getEnterprisesByOwner, getEnterprise } from "@/lib/services/enterpriseService";
+import { updateUserEnterprise } from "@/lib/services/userService";
+import { createInvite, getActiveInvite, type Invite } from "@/lib/services/inviteService";
 import type { Enterprise } from "@/types/enterprise";
 
 const links = [
@@ -24,11 +26,29 @@ export default function Navbar() {
   const [myEnterprises, setMyEnterprises] = useState<Enterprise[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [activeInvite, setActiveInvite] = useState<Invite | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const isOwner = !!enterprise && enterprise.ownerId === user?.uid;
 
   useEffect(() => {
     if (!user?.enterpriseId) return;
     getEnterprise(user.enterpriseId).then(setEnterprise);
   }, [user?.enterpriseId]);
+
+  useEffect(() => {
+    if (!isOwner || !enterprise) {
+      setActiveInvite(null);
+      return;
+    }
+    let cancelled = false;
+    getActiveInvite(enterprise.id, user?.uid || "")
+      .then((inv) => { if (!cancelled) setActiveInvite(inv); })
+      .catch((err) => {
+        if (!cancelled) console.error("No se pudo cargar el codigo de invitacion", err);
+      });
+    return () => { cancelled = true; };
+  }, [isOwner, enterprise?.id, user?.uid]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -46,8 +66,15 @@ export default function Navbar() {
   }, []);
 
   const handleSwitchEnterprise = async (ent: Enterprise) => {
+    if (!user) return;
+    try {
+      await updateUserEnterprise(user.uid, ent.id, "owner");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "No se pudo cambiar de empresa");
+      return;
+    }
     dispatch(setUser({
-      ...user!,
+      ...user,
       enterpriseId: ent.id,
       role: "owner",
     }));
@@ -55,6 +82,39 @@ export default function Navbar() {
     setShowDropdown(false);
     router.refresh();
     window.location.reload();
+  };
+
+  const handleGenerateInvite = async () => {
+    if (!enterprise || !user) return;
+    setGenerating(true);
+    try {
+      const code = await createInvite(enterprise.id, user.uid);
+      setActiveInvite({
+        code,
+        enterpriseId: enterprise.id,
+        createdBy: user.uid,
+        used: false,
+        usedBy: null,
+        usedAt: null,
+        createdAt: new Date().toISOString(),
+      });
+      setCopied(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "No se pudo generar el codigo");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopyInvite = async () => {
+    if (!activeInvite) return;
+    try {
+      await navigator.clipboard.writeText(activeInvite.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert("No se pudo copiar. Codigo: " + activeInvite.code);
+    }
   };
 
   return (
@@ -129,6 +189,31 @@ export default function Navbar() {
                         </button>
                       ))}
                     </div>
+                    {isOwner && (
+                      <div className="p-2" style={{ borderTop: "1px solid var(--graphite-700)" }}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider px-2 py-1" style={{ color: "var(--graphite-500)" }}>Invitar miembros</p>
+                        {activeInvite ? (
+                          <div className="px-2 py-1">
+                            <p className="font-mono text-sm font-bold mb-2 text-center" style={{ backgroundColor: "var(--graphite-900)", color: "var(--tuscan-sun-400)", border: "1px solid var(--graphite-700)", borderRadius: "0.5rem", padding: "0.5rem" }}>
+                              {activeInvite.code}
+                            </p>
+                            <div className="flex gap-2">
+                              <button onClick={handleCopyInvite} className="flex-1 py-1.5 rounded-lg text-xs font-medium cursor-pointer" style={{ backgroundColor: copied ? "rgba(247,183,8,0.15)" : "var(--graphite-700)", color: copied ? "var(--tuscan-sun-400)" : "var(--graphite-200)" }}>
+                                {copied ? "Copiado!" : "Copiar"}
+                              </button>
+                              <button onClick={handleGenerateInvite} disabled={generating} className="flex-1 py-1.5 rounded-lg text-xs font-medium cursor-pointer disabled:opacity-50" style={{ backgroundColor: "var(--graphite-700)", color: "var(--graphite-200)" }}>
+                                {generating ? "Generando..." : "Generar nuevo"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={handleGenerateInvite} disabled={generating} className="w-full py-2 rounded-lg text-xs font-medium cursor-pointer disabled:opacity-50" style={{ backgroundColor: "var(--graphite-700)", color: "var(--graphite-200)" }}>
+                            {generating ? "Generando..." : "Generar codigo"}
+                          </button>
+                        )}
+                        <p className="text-[10px] px-2 py-1" style={{ color: "var(--graphite-600)" }}>Codigo de un solo uso</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

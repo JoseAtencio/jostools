@@ -84,6 +84,11 @@ export async function updateUserEnterprise(uid: string, enterpriseId: string, ro
   await setDoc(userRef, { enterpriseId, role }, { merge: true });
 }
 
+export async function clearUserEnterprise(uid: string): Promise<void> {
+  const userRef = doc(usersRef, uid);
+  await setDoc(userRef, { enterpriseId: null, role: "member" }, { merge: true });
+}
+
 export async function getUsersByEnterprise(enterpriseId: string): Promise<AppUser[]> {
   const { getDocs, query, where } = await import("@firebase/firestore");
   const q = query(usersRef, where("enterpriseId", "==", enterpriseId));

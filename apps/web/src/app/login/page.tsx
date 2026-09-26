@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push("/");
+      router.push(user.enterpriseId ? "/" : "/setup");
     }
   }, [user, router]);
 

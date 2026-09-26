@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks";
 import { setUser } from "@/lib/redux/slices/authSlice";
 import { createEnterprise } from "@/lib/services/enterpriseService";
 import { updateUserEnterprise } from "@/lib/services/userService";
+import { consumeInvite } from "@/lib/services/inviteService";
 
 const inputStyle = {
   backgroundColor: "var(--graphite-800)",
@@ -19,6 +20,14 @@ export default function SetupPage() {
   const { user } = useAppSelector((state) => state.auth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"create" | "join">(() => (user?.enterpriseId ? "join" : "create"));
+  const [code, setCode] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.enterpriseId) setTab("join");
+  }, [user?.enterpriseId]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -64,6 +73,29 @@ export default function SetupPage() {
     }
   };
 
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setJoinError(null);
+    if (code.length !== 8) {
+      setJoinError("El codigo tiene 8 caracteres");
+      return;
+    }
+    if (!user) {
+      setJoinError("Debes iniciar sesion");
+      return;
+    }
+    setJoining(true);
+    try {
+      const enterpriseId = await consumeInvite(code, user.uid);
+      dispatch(setUser({ ...user, enterpriseId, role: "member" }));
+      router.push("/");
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : "Error al unirse");
+    } finally {
+      setJoining(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--graphite-950)" }}>
       <div className="w-full max-w-lg">
@@ -73,14 +105,24 @@ export default function SetupPage() {
           </div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--graphite-50)" }}>Bienvenido a JosTools</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--graphite-400)" }}>
-            Crea la empresa donde trabajas para empezar a registrar mantenimientos.
-          </p>
-          <p className="mt-1 text-xs" style={{ color: "var(--graphite-600)" }}>
-            Las invitaciones de miembros estaran disponibles proximamente.
+            Crea la empresa donde trabajas o unete con un codigo de invitacion.
           </p>
         </div>
 
-        <form onSubmit={handleCreate} className="rounded-2xl border p-8" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
+        <div className="rounded-2xl border p-8" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
+          <div className="flex gap-2 mb-6">
+            <button type="button" onClick={() => setTab("create")} disabled={loading || joining} className="flex-1 py-2.5 rounded-xl text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{
+              backgroundColor: tab === "create" ? "var(--tuscan-sun-500)" : "var(--graphite-800)",
+              color: tab === "create" ? "var(--graphite-950)" : "var(--graphite-400)",
+            }}>Crear mi empresa</button>
+            <button type="button" onClick={() => setTab("join")} disabled={loading || joining} className="flex-1 py-2.5 rounded-xl text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{
+              backgroundColor: tab === "join" ? "var(--tuscan-sun-500)" : "var(--graphite-800)",
+              color: tab === "join" ? "var(--graphite-950)" : "var(--graphite-400)",
+            }}>Unirse con codigo</button>
+          </div>
+
+          {tab === "create" && (
+          <form onSubmit={handleCreate}>
           <h2 className="text-lg font-semibold mb-6" style={{ color: "var(--graphite-100)" }}>Datos de la Empresa</h2>
 
           {error && (
@@ -158,7 +200,40 @@ export default function SetupPage() {
           <button type="submit" disabled={loading} className="w-full mt-6 py-3 px-6 rounded-xl font-medium transition-all disabled:opacity-50 cursor-pointer" style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}>
             {loading ? "Creando..." : "Crear Empresa y Continuar"}
           </button>
-        </form>
+          </form>
+          )}
+
+          {tab === "join" && (
+          <form onSubmit={handleJoin}>
+            <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--graphite-100)" }}>Unirse a una empresa</h2>
+            <p className="text-sm mb-6" style={{ color: "var(--graphite-500)" }}>
+              Pide el codigo de invitacion a tu jefe (solo puede generarlos el propietario de la empresa).
+            </p>
+            {joinError && (
+              <div className="mb-6 p-4 rounded-xl text-sm" style={{ color: "var(--raspberry-red-400)", backgroundColor: "rgba(224, 31, 95, 0.1)", border: "1px solid rgba(224, 31, 95, 0.2)" }}>
+                {joinError}
+              </div>
+            )}
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Codigo de invitacion</label>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => {
+                setJoinError(null);
+                setCode(e.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 8));
+              }}
+              placeholder="Ej: A2B3C4D5"
+              maxLength={8}
+              className="w-full px-4 py-3 rounded-xl text-center font-mono tracking-[0.3em] text-sm outline-none mb-6"
+              style={inputStyle}
+              autoFocus
+            />
+            <button type="submit" disabled={joining || code.length !== 8} className="w-full py-3 px-6 rounded-xl font-medium transition-all disabled:opacity-50 cursor-pointer" style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}>
+              {joining ? "Validando..." : "Unirse"}
+            </button>
+          </form>
+          )}
+        </div>
       </div>
     </div>
   );

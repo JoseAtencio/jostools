@@ -17,7 +17,23 @@ service cloud.firestore {
     match /jostools/config/users/{uid} {
       allow read: if isSignedIn()
         && (request.auth.uid == uid || resource.data.enterpriseId == myEnterpriseId());
-      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.enterpriseId == null;
+      allow update: if isSignedIn() && request.auth.uid == uid && (
+        request.resource.data.enterpriseId == resource.data.enterpriseId
+        || request.resource.data.enterpriseId == null
+        || (
+          request.resource.data.enterpriseId != null
+          && get(/databases/$(database)/documents/jostools/config/enterprises/$(request.resource.data.enterpriseId)).data.ownerId == request.auth.uid
+        )
+        || (
+          request.resource.data.joiningCode is string
+          && get(/databases/$(database)/documents/jostools/config/invites/$(request.resource.data.joiningCode)).data.used == false
+          && getAfter(/databases/$(database)/documents/jostools/config/invites/$(request.resource.data.joiningCode)).data.used == true
+          && getAfter(/databases/$(database)/documents/jostools/config/invites/$(request.resource.data.joiningCode)).data.usedBy == request.auth.uid
+          && getAfter(/databases/$(database)/documents/jostools/config/invites/$(request.resource.data.joiningCode)).data.enterpriseId == request.resource.data.enterpriseId
+        )
+      );
       allow delete: if false;
     }
 
@@ -40,6 +56,25 @@ service cloud.firestore {
     match /jostools/config/categories/{catId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isSignedIn();
+    }
+
+    match /jostools/config/invites/{code} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn()
+        && resource.data.enterpriseId == myEnterpriseId()
+        && resource.data.createdBy == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.used == false
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.enterpriseId == myEnterpriseId()
+        && get(/databases/$(database)/documents/jostools/config/enterprises/$(request.resource.data.enterpriseId)).data.ownerId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.enterpriseId == resource.data.enterpriseId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.usedBy == request.auth.uid;
+      allow delete: if false;
     }
 
     match /{document=**} {
