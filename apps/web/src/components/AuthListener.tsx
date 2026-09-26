@@ -30,6 +30,7 @@ export default function AuthListener({ children }: { children: React.ReactNode }
           photoURL: user.photoURL,
           enterpriseId: fullUser?.enterpriseId || null,
           role: fullUser?.role || "member",
+          memberships: fullUser?.memberships || [],
         }));
       } else {
         dispatch(setUser(null));

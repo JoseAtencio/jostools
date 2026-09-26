@@ -66,7 +66,7 @@ export async function createInvite(enterpriseId: string, uid: string): Promise<s
   );
 }
 
-export async function getActiveInvite(enterpriseId: string, uid: string): Promise<Invite | null> {
+export async function getMyActiveInvites(enterpriseId: string, uid: string): Promise<Invite[]> {
   const q = query(
     invitesRef,
     where("enterpriseId", "==", enterpriseId),
@@ -74,25 +74,27 @@ export async function getActiveInvite(enterpriseId: string, uid: string): Promis
     where("used", "==", false)
   );
   const snap = await getDocs(q);
-  if (snap.empty) return null;
   const docs = snap.docs.map((d) => toInvite(d.id, d.data()));
   docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  return docs[0];
+  return docs;
 }
 
 export async function consumeInvite(code: string, uid: string): Promise<string> {
   const normalized = code.trim().toUpperCase();
   if (!/^[A-HJ-NP-Z2-9]{8}$/.test(normalized)) throw new Error("Codigo no valido");
   const ref = doc(invitesRef, normalized);
+  const userRef = doc(usersRef, uid);
   return runTransaction(db, async (t) => {
     const snap = await t.get(ref);
     if (!snap.exists()) throw new Error("Codigo no valido");
     const data = snap.data();
     if (data.used) throw new Error("Este codigo ya fue usado");
     if (!data.enterpriseId) throw new Error("Codigo no valido");
+    const userSnap = await t.get(userRef);
+    const prev: string[] = Array.isArray(userSnap.data()?.memberships) ? userSnap.data()!.memberships : [];
+    const memberships = prev.includes(data.enterpriseId) ? prev : [...prev, data.enterpriseId];
     t.update(ref, { used: true, usedBy: uid, usedAt: Timestamp.now() });
-    const userRef = doc(usersRef, uid);
-    t.set(userRef, { enterpriseId: data.enterpriseId, role: "member", joiningCode: normalized }, { merge: true });
+    t.set(userRef, { enterpriseId: data.enterpriseId, role: "member", joiningCode: normalized, memberships }, { merge: true });
     return data.enterpriseId as string;
   });
 }

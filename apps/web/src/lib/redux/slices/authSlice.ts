@@ -16,6 +16,7 @@ interface AuthState {
     photoURL: string | null;
     enterpriseId: string | null;
     role: UserRole;
+    memberships?: string[];
   } | null;
   loading: boolean;
   error: string | null;
@@ -67,6 +68,7 @@ const authSlice = createSlice({
         photoURL: string | null;
         enterpriseId: string | null;
         role: UserRole;
+        memberships?: string[];
       } | null>
     ) {
       state.user = action.payload;

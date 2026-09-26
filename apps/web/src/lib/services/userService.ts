@@ -10,6 +10,7 @@ export interface AppUser {
   photoURL: string | null;
   enterpriseId: string | null;
   role: UserRole;
+  memberships: string[];
   lastLogin: string;
   createdAt: string;
 }
@@ -27,8 +28,10 @@ export async function saveUser(userData: {
 
   if (existing.exists()) {
     const data = existing.data();
+    const memberships = Array.isArray(data.memberships) ? data.memberships : [];
     await setDoc(userRef, {
       ...userData,
+      memberships,
       lastLogin: Timestamp.now(),
     }, { merge: true });
     return {
@@ -38,6 +41,7 @@ export async function saveUser(userData: {
       photoURL: userData.photoURL,
       enterpriseId: data.enterpriseId || null,
       role: data.role || "member",
+      memberships,
       lastLogin: new Date().toISOString(),
       createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
     };
@@ -46,6 +50,7 @@ export async function saveUser(userData: {
       ...userData,
       enterpriseId: null,
       role: "member",
+      memberships: [],
       lastLogin: Timestamp.now(),
       createdAt: Timestamp.now(),
     });
@@ -56,6 +61,7 @@ export async function saveUser(userData: {
       photoURL: userData.photoURL,
       enterpriseId: null,
       role: "member",
+      memberships: [],
       lastLogin: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
@@ -74,6 +80,7 @@ export async function getUser(uid: string): Promise<AppUser | null> {
     photoURL: data.photoURL,
     enterpriseId: data.enterpriseId || null,
     role: data.role || "member",
+    memberships: data.memberships || [],
     lastLogin: data.lastLogin?.toDate?.()?.toISOString() || new Date().toISOString(),
     createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
   };
@@ -81,12 +88,24 @@ export async function getUser(uid: string): Promise<AppUser | null> {
 
 export async function updateUserEnterprise(uid: string, enterpriseId: string, role: "owner" | "member"): Promise<void> {
   const userRef = doc(usersRef, uid);
-  await setDoc(userRef, { enterpriseId, role }, { merge: true });
+  const snap = await getDoc(userRef);
+  const existing: string[] = Array.isArray(snap.data()?.memberships) ? snap.data()!.memberships : [];
+  const memberships = existing.includes(enterpriseId) ? existing : [...existing, enterpriseId];
+  await setDoc(userRef, { enterpriseId, role, memberships }, { merge: true });
 }
 
 export async function clearUserEnterprise(uid: string): Promise<void> {
   const userRef = doc(usersRef, uid);
   await setDoc(userRef, { enterpriseId: null, role: "member" }, { merge: true });
+}
+
+export async function removeMemberFromEnterprise(targetUid: string, enterpriseId: string): Promise<void> {
+  const targetRef = doc(usersRef, targetUid);
+  const snap = await getDoc(targetRef);
+  const prev = snap.exists() && Array.isArray(snap.data()?.memberships)
+    ? (snap.data()!.memberships as string[]) : [];
+  const memberships = prev.filter((id) => id !== enterpriseId);
+  await setDoc(targetRef, { enterpriseId: null, memberships }, { merge: true });
 }
 
 export async function getUsersByEnterprise(enterpriseId: string): Promise<AppUser[]> {
@@ -102,6 +121,7 @@ export async function getUsersByEnterprise(enterpriseId: string): Promise<AppUse
       photoURL: data.photoURL,
       enterpriseId: data.enterpriseId || null,
       role: data.role || "member",
+      memberships: data.memberships || [],
       lastLogin: data.lastLogin?.toDate?.()?.toISOString() || new Date().toISOString(),
       createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
     };

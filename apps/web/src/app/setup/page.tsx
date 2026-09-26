@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks";
 import { setUser } from "@/lib/redux/slices/authSlice";
@@ -25,8 +25,18 @@ export default function SetupPage() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
+  const tabFromQueryRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (user?.enterpriseId) setTab("join");
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "create" || t === "join") {
+      tabFromQueryRef.current = t;
+      setTab(t);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user?.enterpriseId && tabFromQueryRef.current === null) setTab("join");
   }, [user?.enterpriseId]);
 
   const [formData, setFormData] = useState({
@@ -64,7 +74,12 @@ export default function SetupPage() {
       });
 
       await updateUserEnterprise(user?.uid || "", enterpriseId, "owner");
-      dispatch(setUser({ ...user!, enterpriseId, role: "owner" }));
+      dispatch(setUser({
+        ...user!,
+        enterpriseId,
+        role: "owner",
+        memberships: [...new Set([...(user?.memberships || []), enterpriseId])],
+      }));
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear empresa");
@@ -87,7 +102,12 @@ export default function SetupPage() {
     setJoining(true);
     try {
       const enterpriseId = await consumeInvite(code, user.uid);
-      dispatch(setUser({ ...user, enterpriseId, role: "member" }));
+      dispatch(setUser({
+        ...user,
+        enterpriseId,
+        role: "member",
+        memberships: [...new Set([...(user.memberships || []), enterpriseId])],
+      }));
       router.push("/");
     } catch (err) {
       setJoinError(err instanceof Error ? err.message : "Error al unirse");
