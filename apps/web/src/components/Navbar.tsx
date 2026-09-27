@@ -352,13 +352,13 @@ export default function Navbar() {
                           + Crear otra empresa
                         </button>
                         <button onClick={() => { setShowDropdown(false); router.push("/setup?tab=join"); }} className="w-full py-2 rounded-lg text-xs font-medium cursor-pointer" style={{ backgroundColor: "var(--graphite-700)", color: "var(--graphite-200)" }}>
-                          Unirme con codigo
+                          Codigo de invitacion
                         </button>
                       </div>
                     </div>
                     {isOwner && (
                       <div className="p-2" style={{ borderTop: "1px solid var(--graphite-700)" }}>
-                        <p className="text-[10px] font-bold uppercase tracking-wider px-2 py-1" style={{ color: "var(--graphite-500)" }}>Invitar miembros</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider px-2 py-1" style={{ color: "var(--graphite-500)" }}>Codigo de invitacion</p>
                         <button onClick={handleOpenGenerate} className="w-full py-2 rounded-lg text-xs font-medium cursor-pointer mb-2" style={{ backgroundColor: "var(--graphite-700)", color: "var(--graphite-200)" }}>
                           Generar codigo
                         </button>
