@@ -10,9 +10,5 @@
     "build": "npm run build --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/web",
     "clean": "npm run clean --workspaces"
-  },
-  "dependencies": {
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8"
   }
 }
