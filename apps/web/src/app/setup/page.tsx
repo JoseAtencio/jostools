@@ -138,7 +138,7 @@ export default function SetupPage() {
             <button type="button" onClick={() => setTab("join")} disabled={loading || joining} className="flex-1 py-2.5 rounded-xl text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{
               backgroundColor: tab === "join" ? "var(--tuscan-sun-500)" : "var(--graphite-800)",
               color: tab === "join" ? "var(--graphite-950)" : "var(--graphite-400)",
-            }}>Unirse con codigo</button>
+            }}>Codigo de invitacion</button>
           </div>
 
           {tab === "create" && (
