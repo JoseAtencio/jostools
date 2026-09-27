@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateMaintenanceEvent } from "@/lib/services/maintenanceService";
+import HelpTip from "@/components/HelpTip";
 import type { MaintenanceEvent, ActionType, RootCause } from "@/types/maintenance";
 
 const inputStyle = {
@@ -76,7 +77,10 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={onCancel}>
       <div className="rounded-2xl border w-full max-w-lg p-6" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-700)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold" style={{ color: "var(--graphite-100)" }}>Cerrar Evento</h2>
+          <h2 className="text-lg font-bold" style={{ color: "var(--graphite-100)" }}>
+            Cerrar Evento
+            <HelpTip title="Cierre de evento" text="Completa los datos finales para cerrar el evento. El recuadro superior recuerda vehiculo, falla y entrada. Los campos con * son obligatorios; al cerrar, el evento pasa al historial y ya no se puede editar." />
+          </h2>
           <button onClick={onCancel} className="p-1 rounded-lg cursor-pointer" style={{ color: "var(--graphite-500)" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--graphite-200)"; e.currentTarget.style.backgroundColor = "var(--graphite-800)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--graphite-500)"; e.currentTarget.style.backgroundColor = "transparent"; }}
@@ -99,13 +103,19 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Salida del Taller *</label>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+              Salida del Taller *
+              <HelpTip title="Salida (obligatoria)" text="Fecha y hora en que el vehiculo salio del taller. Obligatorio; debe ser posterior a la Entrada registrada. Define la duracion total de la reparacion (MTTR)." />
+            </label>
             <input type="datetime-local" name="workshop_exit_time" value={formData.workshop_exit_time} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Accion *</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+                Accion *
+                <HelpTip title="Accion (obligatoria)" text="Resultado final de la intervencion: Reparado (se arreglo el daño existente), Reemplazado (se cambio la pieza) o Ajustado (se calibro/reajusto). Obligatorio." />
+              </label>
               <select name="action_taken" value={formData.action_taken} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle}>
                 <option value="REPAIRED">Reparado</option>
                 <option value="REPLACED">Reemplazado</option>
@@ -113,7 +123,10 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Causa Raiz</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+                Causa Raiz
+                <HelpTip title="Causa raiz (opcional)" text="Motivo principal por el que ocurrio la falla (ej: Desgaste natural, Error del operador). Opcional, pero recomendado: alimenta las graficas de tendencia de causas del dashboard." />
+              </label>
               <select name="root_cause" value={formData.root_cause} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle}>
                 <option value="">Seleccionar...</option>
                 <option value="WEAR_AND_TEAR">Desgaste natural</option>
@@ -126,11 +139,17 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Horas Efectivas</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+                Horas Efectivas
+                <HelpTip title="Horas (opcional)" text="Horas reales de trabajo del tecnico en esta reparacion, sin contar espera. Ej: 2.5. Se suman a los reportes de horas del sistema." />
+              </label>
               <input type="number" name="effective_work_hours" value={formData.effective_work_hours} onChange={handleChange} placeholder="Horas de trabajo" step="any" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Costo Reparacion</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+                Costo Reparacion
+                <HelpTip title="Costo (opcional)" text="Costo final de la reparacion en la moneda local (repuestos + mano de obra). Ej: 1500.00. Se suma al costo total del evento en las graficas del dashboard." />
+              </label>
               <input type="number" name="repair_cost" value={formData.repair_cost} onChange={handleChange} placeholder="0.00" step="any" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
             </div>
           </div>

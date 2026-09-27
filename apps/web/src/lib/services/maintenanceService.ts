@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where, Timestamp, doc, updateDoc } from "@firebase/firestore";
+import { collection, addDoc, getDocs, query, where, Timestamp, doc, updateDoc, getDoc } from "@firebase/firestore";
 import { db } from "@jostools/firebase-config";
 import * as XLSX from "xlsx";
 import type { MaintenanceEventInput, MaintenanceEvent } from "@/types/maintenance";
@@ -47,6 +47,22 @@ export async function getMaintenanceEvents(enterpriseId: string): Promise<Mainte
   }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
+export async function getEventById(id: string): Promise<MaintenanceEvent | null> {
+  const snap = await getDoc(doc(maintenanceRef, id));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return {
+    id: snap.id,
+    ...data,
+    failure_timestamp: toISOString(data.failure_timestamp),
+    workshop_entry_time: toISOString(data.workshop_entry_time),
+    workshop_exit_time: data.workshop_exit_time ? toISOString(data.workshop_exit_time) : "",
+    created_at: toISOString(data.created_at),
+    status: data.status || "PENDING",
+    enterpriseId: data.enterpriseId,
+  } as MaintenanceEvent;
+}
+
 export async function updateMaintenanceEvent(id: string, data: Partial<MaintenanceEventInput>): Promise<void> {
   const docRef = doc(db, "jostools", "config", "maintenance_events", id);
   const updateData: Record<string, unknown> = { ...data };
@@ -69,7 +85,7 @@ function randomFrom<T>(arr: T[]): T {
 export async function seedTestEvents(userId: string, enterpriseId: string, count = 10): Promise<void> {
   const vehicles = ["VEH-001", "VEH-002", "VEH-003", "VEH-004", "VEH-005", "CAM-101", "CAM-102", "BUS-201"];
   const components = ["Filtro de aceite", "Pastillas de freno", "Bateria", "Correa alternador", "Radiador", "Suspension delantera", "Caja de cambios", "Embrague", "Turbo", "Inyectores"];
-  const eventTypes: Array<"CORRECTIVE" | "PREVENTIVE" | "INSPECTION"> = ["CORRECTIVE", "PREVENTIVE", "INSPECTION"];
+  const eventTypes: Array<"CORRECTIVE" | "PREVENTIVE" | "INSPECTION" | "PREDICTIVE"> = ["CORRECTIVE", "PREVENTIVE", "INSPECTION", "PREDICTIVE"];
   const actionTypes: Array<"REPAIRED" | "REPLACED" | "ADJUSTED"> = ["REPAIRED", "REPLACED", "ADJUSTED"];
   const categories: Array<"ENGINE" | "TRANSMISSION" | "BRAKES" | "ELECTRICAL" | "TIRES" | "SUSPENSION" | "OTHER"> = ["ENGINE", "TRANSMISSION", "BRAKES", "ELECTRICAL", "TIRES", "SUSPENSION", "OTHER"];
   const rootCauses: Array<"WEAR_AND_TEAR" | "OPERATOR_ERROR" | "PART_DEFECT" | "ACCIDENT"> = ["WEAR_AND_TEAR", "OPERATOR_ERROR", "PART_DEFECT", "ACCIDENT"];

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import HelpTip from "@/components/HelpTip";
 
 interface Option {
   name: string;
@@ -15,6 +16,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
+  helpText?: string;
   onCreateNew?: (search: string) => void;
 }
 
@@ -26,6 +28,7 @@ export default function SearchableSelect({
   placeholder = "Buscar o seleccionar...",
   required = false,
   disabled = false,
+  helpText,
   onCreateNew,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,6 +77,7 @@ export default function SearchableSelect({
     <div ref={containerRef} className="relative">
       <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
         {label} {required && <span style={{ color: "var(--raspberry-red-400)" }}>*</span>}
+        {helpText && <HelpTip text={helpText} />}
       </label>
 
       <button

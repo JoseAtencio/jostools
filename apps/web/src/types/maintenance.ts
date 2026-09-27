@@ -1,4 +1,4 @@
-export type EventType = "CORRECTIVE" | "PREVENTIVE" | "INSPECTION";
+export type EventType = "CORRECTIVE" | "PREVENTIVE" | "INSPECTION" | "PREDICTIVE";
 export type ActionType = "REPAIRED" | "REPLACED" | "ADJUSTED";
 export type SystemCategory = "ENGINE" | "TRANSMISSION" | "BRAKES" | "ELECTRICAL" | "TIRES" | "SUSPENSION" | "OTHER";
 export type RootCause = "WEAR_AND_TEAR" | "OPERATOR_ERROR" | "PART_DEFECT" | "ACCIDENT";
@@ -30,6 +30,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   CORRECTIVE: "Correctivo (Falla imprevista)",
   PREVENTIVE: "Preventivo (Mantenimiento programado)",
   INSPECTION: "Inspeccion",
+  PREDICTIVE: "Predictivo (Monitoreo de condicion)",
 };
 
 export const ACTION_TYPE_LABELS: Record<ActionType, string> = {

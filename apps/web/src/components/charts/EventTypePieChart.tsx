@@ -3,21 +3,26 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { PieData } from "@/lib/services/indicatorService";
 import { CHART_TOOLTIP_STYLE } from "./chartStyles";
+import HelpTip from "@/components/HelpTip";
 
-const LABELS: Record<string, string> = { Correctivos: "Correctivos", Preventivos: "Preventivos", Inspecciones: "Inspecciones" };
+const LABELS: Record<string, string> = { Correctivos: "Correctivos", Preventivos: "Preventivos", Inspecciones: "Inspecciones", Predictivos: "Predictivos" };
 
 interface Props {
   data: PieData[];
   onFilter?: (key: string) => void;
   activeFilter?: string | null;
+  helpText?: string;
 }
 
-export default function EventTypePieChart({ data, onFilter, activeFilter }: Props) {
+export default function EventTypePieChart({ data, onFilter, activeFilter, helpText }: Props) {
   const total = data.reduce((s, d) => s + d.value, 0);
 
   return (
     <div className="rounded-2xl border p-6 transition-all" style={{ backgroundColor: "var(--graphite-900)", borderColor: activeFilter ? "var(--tuscan-sun-500)" : "var(--graphite-800)" }}>
-      <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--graphite-200)" }}>Distribucion por tipo de evento</h3>
+      <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--graphite-200)" }}>
+        Distribucion por tipo de evento
+        {helpText && <HelpTip text={helpText} />}
+      </h3>
       {total === 0 ? (
         <p className="text-center py-10 text-sm" style={{ color: "var(--graphite-500)" }}>Sin datos</p>
       ) : (

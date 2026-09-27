@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, setDoc, where } from "@firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from "@firebase/firestore";
 import { db } from "@jostools/firebase-config";
 import type { Vehicle, VehicleInput } from "@/types/vehicle";
 
@@ -27,6 +27,13 @@ export async function getVehicles(enterpriseId: string): Promise<Vehicle[]> {
   const vehicles = snapshot.docs.map((d) => toVehicle(d.id, d.data()));
   vehicles.sort((a, b) => a.vehicle_id.localeCompare(b.vehicle_id));
   return vehicles;
+}
+
+export async function getVehicleById(enterpriseId: string, vehicleId: string): Promise<Vehicle | null> {
+  const id = `${enterpriseId}_${normalizeVehicleId(vehicleId)}`;
+  const snap = await getDoc(doc(vehiclesRef, id));
+  if (!snap.exists()) return null;
+  return toVehicle(snap.id, snap.data());
 }
 
 export async function createVehicle(data: VehicleInput): Promise<Vehicle> {

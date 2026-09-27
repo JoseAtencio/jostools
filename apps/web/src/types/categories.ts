@@ -27,6 +27,7 @@ export const DEFAULT_CATEGORIES: Omit<Category, "id" | "created_at">[] = [
   { name: "CORRECTIVE", label: "Correctivo (Falla imprevista)", group: "event_type", active: true },
   { name: "PREVENTIVE", label: "Preventivo (Mantenimiento programado)", group: "event_type", active: true },
   { name: "INSPECTION", label: "Inspeccion", group: "event_type", active: true },
+  { name: "PREDICTIVE", label: "Predictivo (Monitoreo de condicion)", group: "event_type", active: true },
 
   // System Categories
   { name: "ENGINE", label: "Motor", group: "system_category", active: true },

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { createVehicle } from "@/lib/services/vehicleService";
+import HelpTip from "@/components/HelpTip";
 import type { Vehicle } from "@/types/vehicle";
 
 const inputStyle = {
@@ -53,13 +55,15 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log("[VC] modal submit, validating");
     setServerError(null);
 
     const errors = validate();
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) { console.log("[VC] modal validation failed", errors); return; }
 
     setLoading(true);
+    console.log("[VC] modal createVehicle start");
     try {
       const vehicle = await createVehicle({
         vehicle_id: vehicleId,
@@ -69,8 +73,10 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
         enterpriseId,
         created_by: createdBy,
       });
+      console.log("[VC] modal saved OK", vehicle.vehicle_id);
       onSaved(vehicle);
     } catch (err) {
+      console.error("[VC] modal save FAILED", err);
       setServerError(err instanceof Error ? err.message : "No se pudo guardar el vehiculo");
       setLoading(false);
     }
@@ -79,11 +85,14 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
   const errorStyle = (field: string) =>
     fieldErrors[field] ? { ...inputStyle, borderColor: "var(--raspberry-red-400)" } : inputStyle;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="rounded-2xl border w-full max-w-sm p-6" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-700)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold" style={{ color: "var(--graphite-100)" }}>Nuevo Vehiculo</h2>
+          <h2 className="text-lg font-bold" style={{ color: "var(--graphite-100)" }}>
+            Nuevo Vehiculo
+            <HelpTip title="Catalogo de vehiculos" text="Registra un vehiculo nuevo en el catalogo de la empresa para poder abrirle eventos de mantenimiento. Todos los campos son obligatorios (*); la matricula es el identificador unico y no se puede repetir." />
+          </h2>
           <button onClick={onClose} className="p-1 rounded-lg cursor-pointer" style={{ color: "var(--graphite-500)" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--graphite-200)"; e.currentTarget.style.backgroundColor = "var(--graphite-800)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--graphite-500)"; e.currentTarget.style.backgroundColor = "transparent"; }}
@@ -100,7 +109,10 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Matricula *</label>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+              Matricula *
+              <HelpTip title="Matricula (obligatoria)" text="Placa o VIN unico del vehiculo dentro de la empresa. Ej: ABC-123. No se puede repetir: es la clave con la que se relacionan todos sus eventos. Si ya existe, no vuelva a crearla." />
+            </label>
             <input
               type="text"
               autoFocus
@@ -116,7 +128,10 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Marca *</label>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+              Marca *
+              <HelpTip title="Marca (obligatoria)" text="Marca del vehiculo o maquinaria. Ej: Toyota, Chevrolet, Caterpillar. Se usa para filtrar y buscar en el catalogo de vehiculos." />
+            </label>
             <input
               type="text"
               value={brand}
@@ -131,7 +146,10 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Modelo *</label>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+              Modelo *
+              <HelpTip title="Modelo (obligatorio)" text="Modelo del vehiculo. Ej: Hilux, Aveo, 320D. Junto con la marca identifica el vehiculo en el catalogo y en los reportes." />
+            </label>
             <input
               type="text"
               value={model}
@@ -146,7 +164,10 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Anio *</label>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+              Anio *
+              <HelpTip title="Anio (obligatorio)" text={`Anio de fabricacion entre 1900 y ${maxYear}. Ej: 2020. Se muestra en las filas del catalogo junto con placa, marca y modelo.`} />
+            </label>
             <input
               type="number"
               min={1900}
@@ -172,6 +193,7 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

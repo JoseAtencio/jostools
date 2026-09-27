@@ -15,8 +15,9 @@ import MonthlyEventsChart from "@/components/charts/MonthlyEventsChart";
 import TrendChart from "@/components/charts/TrendChart";
 import CostByCategoryChart from "@/components/charts/CostByCategoryChart";
 import TopVehiclesChart from "@/components/charts/TopVehiclesChart";
-import QuickOpenForm from "@/components/QuickOpenForm";
 import CloseEventModal from "@/components/CloseEventModal";
+import HelpTip from "@/components/HelpTip";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { MaintenanceEvent, EventType, SystemCategory } from "@/types/maintenance";
 
@@ -71,9 +72,9 @@ function getActiveQuickFilter(from: string | null, to: string | null): QuickFilt
 
 export default function Home() {
   const { user } = useAppSelector((state) => state.auth);
+  const router = useRouter();
   const [seeding, setSeeding] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [showQuickOpen, setShowQuickOpen] = useState(false);
   const [closeEvent, setCloseEvent] = useState<MaintenanceEvent | null>(null);
 
   const [allEvents, setAllEvents] = useState<MaintenanceEvent[]>([]);
@@ -165,10 +166,13 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold" style={{ color: "var(--graphite-50)" }}>Dashboard</h1>
+              <h1 className="text-3xl font-bold" style={{ color: "var(--graphite-50)" }}>
+                Dashboard
+                <HelpTip title="Resumen general de la flota" text="Indicadores de confiabilidad (MTBF, MTTR, MTTF, Disponibilidad), eventos por tipo, costos y tendencias. Todo se recalcula segun los filtros de fecha y al hacer click en las graficas." />
+              </h1>
               <p className="mt-1" style={{ color: "var(--graphite-400)" }}>Panel de control de mantenimiento de flotas</p>
             </div>
-            <button onClick={() => setShowQuickOpen(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all" style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}>
+            <button onClick={() => router.push("/maintenance/new")} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all" style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               Abrir Evento
             </button>
@@ -179,7 +183,10 @@ export default function Home() {
             <div className="mb-8 rounded-2xl border p-5" style={{ backgroundColor: "var(--graphite-900)", borderColor: "rgba(247, 183, 8, 0.3)" }}>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--tuscan-sun-500)" }} />
-                <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--tuscan-sun-400)" }}>Eventos Abiertos ({openEvents.length})</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--tuscan-sun-400)" }}>
+                    Eventos Abiertos ({openEvents.length})
+                    <HelpTip title="Eventos abiertos" text="Eventos que siguen activos en el taller: todavia no se registro la salida. Haz click en una tarjeta para cerrarlo y registrar la fecha de salida, las horas efectivas y el costo final." />
+                  </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {openEvents.map((event) => {
@@ -206,7 +213,10 @@ export default function Home() {
 
           {/* Filtro por fecha */}
           <div className="mb-6 flex items-center gap-3 flex-wrap">
-            <span className="text-xs font-medium" style={{ color: "var(--graphite-400)" }}>Filtrar por fecha:</span>
+            <span className="text-xs font-medium" style={{ color: "var(--graphite-400)" }}>
+              Filtrar por fecha:
+              <HelpTip title="Filtro de fechas" text="Define el rango de fechas del periodo analizado. Los botones rapidos (Este mes, Esta semana, Este dia, Todos los dias) ajustan el rango automaticamente. Solo se cuentan los eventos cuya fecha de falla esta dentro del rango." />
+            </span>
             <div className="flex items-center gap-1">
               <label htmlFor="dateFrom" className="cursor-pointer p-1.5 rounded-md transition-colors" style={{ color: "var(--graphite-400)" }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = "var(--tuscan-sun-400)"; e.currentTarget.style.backgroundColor = "rgba(247, 183, 8, 0.1)"; }}
@@ -272,7 +282,10 @@ export default function Home() {
           {/* Filtros activos */}
           {activeFilterCount > 0 && (
             <div className="mb-6 flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium" style={{ color: "var(--graphite-400)" }}>Filtros activos:</span>
+              <span className="text-xs font-medium" style={{ color: "var(--graphite-400)" }}>
+                Filtros activos:
+                <HelpTip title="Filtros aplicados" text="Cada chip es un filtro activo sobre el dashboard. Haz click en la X de un chip para quitarlo, o en 'Limpiar todo' para reiniciar todos los filtros. El contador indica cuantos eventos cumplen los filtros." />
+              </span>
               {filters.dateFrom && filters.dateFrom !== getDefaultDateFrom() && (
                 <button onClick={() => setFilters((prev) => ({ ...prev, dateFrom: getDefaultDateFrom() }))} className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all" style={{ backgroundColor: "rgba(247, 183, 8, 0.15)", color: "var(--tuscan-sun-400)", border: "1px solid rgba(247, 183, 8, 0.3)" }}>
                   Desde: {filters.dateFrom} <span className="ml-1 opacity-60">&times;</span>
@@ -319,15 +332,18 @@ export default function Home() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
             {[
-              { label: "MTBF", value: formatHours(indicators.mtbf), sub: "Tiempo Medio Entre Fallas", color: "var(--tuscan-sun-400)", bg: "rgba(247, 183, 8, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /> },
-              { label: "MTTR", value: formatHours(indicators.mttr), sub: "Tiempo Medio de Reparacion", color: "var(--raspberry-red-400)", bg: "rgba(224, 31, 95, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /> },
-              { label: "MTTF", value: formatHours(indicators.mttf), sub: "Tiempo Medio Hasta la Falla", color: "var(--ash-grey-400)", bg: "rgba(102, 153, 145, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /> },
-              { label: "Disponibilidad", value: formatPercent(indicators.availability), sub: "Operativa de la flota", color: "var(--crayola-blue-400)", bg: "rgba(0, 81, 255, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /> },
+              { label: "MTBF", value: formatHours(indicators.mtbf), sub: "Tiempo Medio Entre Fallas", color: "var(--tuscan-sun-400)", bg: "rgba(247, 183, 8, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />, help: "Tiempo Medio Entre Fallas: promedio de horas de operacion entre una falla y la siguiente. Se calcula solo con eventos Correctivos; cuanto mas alto, mas confiable es la flota. Requiere al menos 1 evento Correctivo." },
+              { label: "MTTR", value: formatHours(indicators.mttr), sub: "Tiempo Medio de Reparacion", color: "var(--raspberry-red-400)", bg: "rgba(224, 31, 95, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />, help: "Tiempo Medio de Reparacion: promedio de horas entre la deteccion de la falla y la salida del taller en eventos Correctivos. Cuanto mas bajo, mas rapida es la reparacion y menos tiempo pierde la flota." },
+              { label: "MTTF", value: formatHours(indicators.mttf), sub: "Tiempo Medio Hasta la Falla", color: "var(--ash-grey-400)", bg: "rgba(102, 153, 145, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />, help: "Tiempo Medio Hasta la Falla: promedio de horas de uso de los componentes reemplazados (accion 'Reemplazado'). Indica cuanto duran las piezas nuevas antes de volver a fallar." },
+              { label: "Disponibilidad", value: formatPercent(indicators.availability), sub: "Operativa de la flota", color: "var(--crayola-blue-400)", bg: "rgba(0, 81, 255, 0.1)", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />, help: "Porcentaje de tiempo operativo de la flota: MTBF / (MTBF + MTTR) x 100. Solo se calcula cuando hay eventos Correctivos con reparacion cerrada." },
             ].map((kpi) => (
               <div key={kpi.label} className="rounded-2xl border p-6 transition-all duration-300 hover:scale-[1.02]" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--graphite-400)" }}>{kpi.label}</p>
+                    <p className="text-sm font-medium" style={{ color: "var(--graphite-400)" }}>
+                      {kpi.label}
+                      <HelpTip text={kpi.help} />
+                    </p>
                     <p className="text-3xl font-bold mt-2" style={{ color: "var(--graphite-50)" }}>
                       {loadingData ? <span className="inline-block w-16 h-8 rounded-lg animate-pulse" style={{ backgroundColor: "var(--graphite-800)" }} /> : kpi.value}
                     </p>
@@ -345,14 +361,17 @@ export default function Home() {
           {indicators.totalEvents > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
               {[
-                { val: indicators.totalEvents, label: "Total eventos", color: "var(--tuscan-sun-400)" },
-                { val: indicators.correctiveCount, label: "Correctivos", color: "var(--raspberry-red-400)" },
-                { val: indicators.preventiveCount, label: "Preventivos", color: "var(--ash-grey-400)" },
-                { val: indicators.inspectionCount, label: "Inspecciones", color: "var(--crayola-blue-400)" },
+                { val: indicators.totalEvents, label: "Total eventos", color: "var(--tuscan-sun-400)", help: "Total de eventos que coinciden con los filtros activos." },
+                { val: indicators.correctiveCount, label: "Correctivos", color: "var(--raspberry-red-400)", help: "Fallas imprevistas reparadas; son los que alimentan los indicadores MTBF y MTTR." },
+                { val: indicators.preventiveCount, label: "Preventivos", color: "var(--ash-grey-400)", help: "Mantenimientos programados realizados para prevenir fallas." },
+                { val: indicators.inspectionCount, label: "Inspecciones", color: "var(--crayola-blue-400)", help: "Revisiones periodicas del vehiculo; no afectan los indicadores de confiabilidad." },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl border p-4 text-center" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
                   <p className="text-2xl font-bold" style={{ color: s.color }}>{s.val}</p>
-                  <p className="text-xs mt-1" style={{ color: "var(--graphite-500)" }}>{s.label}</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--graphite-500)" }}>
+                    {s.label}
+                    <HelpTip text={s.help} />
+                  </p>
                 </div>
               ))}
             </div>
@@ -360,19 +379,19 @@ export default function Home() {
 
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-            <EventTypePieChart data={pieData} onFilter={(key) => toggleFilter("eventType", key)} activeFilter={filters.eventType} />
-            <MonthlyEventsChart data={barData} onFilter={(key) => toggleFilter("month", key)} activeFilter={filters.month} />
+            <EventTypePieChart data={pieData} onFilter={(key) => toggleFilter("eventType", key)} activeFilter={filters.eventType} helpText="Cuenta los eventos del periodo por tipo: Correctivo, Preventivo, Inspeccion y Predictivo. Haz click en un segmento o en su leyenda para filtrar todo el dashboard por ese tipo; vuelve a hacer click para quitar el filtro." />
+            <MonthlyEventsChart data={barData} onFilter={(key) => toggleFilter("month", key)} activeFilter={filters.month} helpText="Cuantos eventos se registraron en cada mes del periodo. Haz click en una barra para filtrar todo el dashboard por ese mes; haz click de nuevo para quitar el filtro." />
           </div>
 
           {/* Charts Row 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-            <TrendChart data={trendData} />
-            <CostByCategoryChart data={costData} onFilter={(key) => toggleFilter("category", CATEGORY_ES_TO_KEY[key] ?? null)} activeFilter={filters.category ? (Object.entries(CATEGORY_ES_TO_KEY).find(([_, v]) => v === filters.category)?.[0] ?? null) : null} />
+            <TrendChart data={trendData} helpText="Evolucion mensual de los indicadores de confiabilidad: MTBF (horas entre fallas, cuanto mas alto mejor) y MTTR (horas de reparacion, cuanto mas bajo mejor). Se calcula solo con eventos Correctivos cerrados." />
+            <CostByCategoryChart data={costData} onFilter={(key) => toggleFilter("category", CATEGORY_ES_TO_KEY[key] ?? null)} activeFilter={filters.category ? (Object.entries(CATEGORY_ES_TO_KEY).find(([_, v]) => v === filters.category)?.[0] ?? null) : null} helpText="Costo acumulado de reparaciones por sistema del vehiculo (Motor, Frenos, Electrico...). Haz click en una barra para filtrar todo el dashboard por esa categoria." />
           </div>
 
           {/* Charts Row 3 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-10">
-            <TopVehiclesChart data={vehicleData} onFilter={(key) => toggleFilter("vehicle", key)} activeFilter={filters.vehicle} />
+            <TopVehiclesChart data={vehicleData} onFilter={(key) => toggleFilter("vehicle", key)} activeFilter={filters.vehicle} helpText="Los 5 vehiculos con mas eventos registrados en el periodo. Haz click en una barra para filtrar todo el dashboard por ese vehiculo." />
 
             {/* Welcome + Seed + Export */}
             <div className="rounded-2xl border p-8 flex flex-col items-center justify-center text-center" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
@@ -411,9 +430,6 @@ export default function Home() {
         </div>
       </main>
 
-      {showQuickOpen && (
-        <QuickOpenForm onSuccess={() => { setShowQuickOpen(false); loadData(); }} onCancel={() => setShowQuickOpen(false)} />
-      )}
       {closeEvent && (
         <CloseEventModal event={closeEvent} onSuccess={() => { setCloseEvent(null); loadData(); }} onCancel={() => setCloseEvent(null)} />
       )}

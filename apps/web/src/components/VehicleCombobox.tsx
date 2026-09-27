@@ -38,13 +38,35 @@ export default function VehicleCombobox({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const onSubmitCapture = (e: Event) => {
+      const target = e.target as HTMLElement;
+      console.log("[VC] native submit captured", { tag: target?.tagName, cls: (target?.getAttribute?.("class") ?? "").slice(0, 50) });
+    };
+    const onSubmitBubble = (e: Event) => {
+      console.log("[VC] native submit bubble defaultPrevented:", e.defaultPrevented);
+    };
+    const onBeforeUnload = () => console.log("[VC] BEFOREUNLOAD - page is unloading");
+    document.addEventListener("submit", onSubmitCapture, true);
+    document.addEventListener("submit", onSubmitBubble, false);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("submit", onSubmitCapture, true);
+      document.removeEventListener("submit", onSubmitBubble, false);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, []);
+
+  useEffect(() => {
+    const hasCache = Boolean(enterpriseId && vehiclesState.byEnterprise[enterpriseId]);
+    const loadFlag = Boolean(enterpriseId && vehiclesState.loading[enterpriseId]);
+    console.log("[VC] effect", { ent: enterpriseId ?? null, hasCache, loadFlag });
     if (!enterpriseId) return;
-    if (vehiclesState.byEnterprise[enterpriseId] || vehiclesState.loading[enterpriseId]) return;
+    if (hasCache || loadFlag) return;
     dispatch(setLoading({ enterpriseId, loading: true }));
     getVehicles(enterpriseId)
-      .then((list) => { dispatch(setVehicles({ enterpriseId, vehicles: list })); })
+      .then((list) => { console.log("[VC] fetched", list.length, list.map((v) => v.vehicle_id)); dispatch(setVehicles({ enterpriseId, vehicles: list })); })
       .catch((err) => {
-        console.error("Error cargando vehiculos:", err);
+        console.error("[VC] Error cargando vehiculos:", err);
         dispatch(setLoading({ enterpriseId, loading: false }));
       });
   }, [enterpriseId, dispatch]);
@@ -81,7 +103,10 @@ export default function VehicleCombobox({
   const showSave = Boolean(enterpriseId) && q.length > 0 && !matched && !isLoading;
   const showEmpty = vehicles.length === 0 && q.length === 0 && !isLoading;
 
+  console.log("[VC]", { open, value, q, n: vehicles.length, loading: isLoading, ent: enterpriseId, matched: matched?.vehicle_id ?? null, showSave, ids: vehicles.map((v) => v.vehicle_id) });
+
   const selectVehicle = (vehicleId: string) => {
+    console.log("[VC] select", vehicleId);
     onChange(vehicleId);
     setOpen(false);
   };

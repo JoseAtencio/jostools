@@ -1,4 +1,4 @@
-import type { MaintenanceEvent } from "@/types/maintenance";
+import type { MaintenanceEvent, EventType } from "@/types/maintenance";
 
 export interface Indicators {
   mtbf: number | null;
@@ -78,12 +78,13 @@ export function formatPercent(value: number | null): string {
 export interface PieData { name: string; value: number; fill: string; key: string }
 
 export function getEventTypePieData(events: MaintenanceEvent[]): PieData[] {
-  const counts = { CORRECTIVE: 0, PREVENTIVE: 0, INSPECTION: 0 };
+  const counts: Record<EventType, number> = { CORRECTIVE: 0, PREVENTIVE: 0, INSPECTION: 0, PREDICTIVE: 0 };
   events.forEach((e) => { counts[e.event_type]++; });
   return [
     { name: "Correctivos", value: counts.CORRECTIVE, fill: "#E01F5F", key: "CORRECTIVE" },
     { name: "Preventivos", value: counts.PREVENTIVE, fill: "#669991", key: "PREVENTIVE" },
     { name: "Inspecciones", value: counts.INSPECTION, fill: "#F7B708", key: "INSPECTION" },
+    { name: "Predictivos", value: counts.PREDICTIVE, fill: "#0051FF", key: "PREDICTIVE" },
   ];
 }
 

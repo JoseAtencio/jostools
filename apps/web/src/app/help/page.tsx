@@ -79,6 +79,7 @@ const sections = [
       { name: "Correctivo (Falla imprevista)", desc: "Reparacion no programada por una falla inesperada. Es el tipo principal para calcular MTBF y MTTR." },
       { name: "Preventivo (Mantenimiento programado)", desc: "Mantenimiento programado para prevenir fallas. No afecta los indicadores de confiabilidad." },
       { name: "Inspeccion", desc: "Revision periodica del vehiculo. No afecta los indicadores de confiabilidad." },
+      { name: "Predictivo (Monitoreo de condicion)", desc: "Intervencion basada en mediciones o sintomas detectados antes de la falla (vibracion, temperatura, etc). No afecta los indicadores de confiabilidad." },
     ],
   },
   {
@@ -97,7 +98,7 @@ const sections = [
     title: "Filtros del Dashboard",
     items: [
       { name: "Fecha rapida", desc: "Botones: Este mes, Esta semana, Este dia, Todos los dias. Filtran los registros por rango de fechas." },
-      { name: "Tipo de evento", desc: "Filtra por Correctivo, Preventivo o Inspeccion." },
+      { name: "Tipo de evento", desc: "Filtra por Correctivo, Preventivo, Inspeccion o Predictivo." },
       { name: "Vehiculo", desc: "Filtra por un vehiculo especifico." },
       { name: "Categoria", desc: "Filtra por categoria del sistema (Motor, Frenos, etc)." },
       { name: "Graficas interactivas", desc: "Haz click en cualquier grafica para aplicar un filtro rapido. Aparecera un chip con el filtro activo." },

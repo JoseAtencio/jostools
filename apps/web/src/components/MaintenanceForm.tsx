@@ -10,6 +10,7 @@ import { db } from "@jostools/firebase-config";
 import { useRouter } from "next/navigation";
 import SearchableSelect from "@/components/SearchableSelect";
 import VehicleCombobox from "@/components/VehicleCombobox";
+import HelpTip from "@/components/HelpTip";
 import type { EventType, ActionType, SystemCategory, RootCause, MaintenanceEventInput } from "@/types/maintenance";
 import type { Category, CategoryGroup } from "@/types/categories";
 
@@ -38,7 +39,7 @@ function createInitialFormData() {
     event_type: "",
     failure_timestamp: now,
     workshop_entry_time: now,
-    workshop_exit_time: "",
+    workshop_exit_time: now,
     effective_work_hours: "",
     system_category: "",
     component_id: "",
@@ -67,6 +68,7 @@ export default function MaintenanceForm() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
+  const [closedNow, setClosedNow] = useState(true);
 
   const [categories, setCategories] = useState<Record<CategoryGroup, Category[]>>({
     event_type: [],
@@ -163,6 +165,25 @@ export default function MaintenanceForm() {
     updateField(e.target.name, e.target.value);
   };
 
+  const handleToggleClosed = () => {
+    const next = !closedNow;
+    setClosedNow(next);
+    const nextData = next
+      ? { ...formData, workshop_exit_time: formData.workshop_exit_time || toLocalDatetimeValue(new Date()) }
+      : { ...formData, workshop_exit_time: "", effective_work_hours: "", repair_cost: "" };
+    setFormData(nextData);
+    setDirty(JSON.stringify(nextData) !== JSON.stringify(initialFormData));
+    setFieldErrors((prev) => {
+      const keys = next
+        ? ["workshop_exit_time"]
+        : ["workshop_exit_time", "effective_work_hours", "repair_cost"];
+      if (!keys.some((key) => prev[key])) return prev;
+      const nx = { ...prev };
+      keys.forEach((key) => delete nx[key]);
+      return nx;
+    });
+  };
+
   const handleSelectChange = (name: string, value: string) => {
     updateField(name, value);
   };
@@ -176,6 +197,7 @@ export default function MaintenanceForm() {
     if (!formData.action_taken) errors.action_taken = "La accion realizada es requerida";
     if (!formData.failure_timestamp) errors.failure_timestamp = "La fecha de falla es requerida";
     if (!formData.workshop_entry_time) errors.workshop_entry_time = "La fecha de entrada es requerida";
+    if (closedNow && !formData.workshop_exit_time) errors.workshop_exit_time = "La fecha de salida es requerida para cerrar el evento";
     if (
       formData.workshop_entry_time &&
       formData.failure_timestamp &&
@@ -218,7 +240,8 @@ export default function MaintenanceForm() {
         event_type: formData.event_type as EventType,
         failure_timestamp: formData.failure_timestamp,
         workshop_entry_time: formData.workshop_entry_time,
-        workshop_exit_time: formData.workshop_exit_time,
+        workshop_exit_time: closedNow ? formData.workshop_exit_time : "",
+        status: closedNow ? "COMPLETED" : "PENDING",
         effective_work_hours: formData.effective_work_hours ? parseFloat(formData.effective_work_hours) : null,
         system_category: formData.system_category as SystemCategory,
         component_id: formData.component_id,
@@ -245,6 +268,7 @@ export default function MaintenanceForm() {
     setError(null);
     setSavedId(null);
     setDirty(false);
+    setClosedNow(true);
     setFocusRequest((n) => n + 1);
   };
 
@@ -298,7 +322,10 @@ export default function MaintenanceForm() {
 
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border p-8" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
-      <h2 className="text-xl font-semibold mb-6" style={{ color: "var(--graphite-50)" }}>Nuevo Evento de Mantenimiento</h2>
+      <h2 className="text-xl font-semibold mb-6" style={{ color: "var(--graphite-50)" }}>
+        Nuevo Evento de Mantenimiento
+        <HelpTip title="Que es un evento?" text="Un evento de mantenimiento registra una falla o una intervencion en un vehiculo: cuando ocurrio, que se hizo y cuanto costo. Los campos con * son obligatorios. Al guardar, el evento queda en la bitacora del vehiculo y alimenta los reportes del dashboard (costos, tendencias, MTBF/MTTR)." />
+      </h2>
 
       {bannerMessage && (
         <div className="mb-6 p-4 rounded-xl text-sm" style={{ color: "var(--raspberry-red-400)", backgroundColor: "rgba(224, 31, 95, 0.1)", border: "1px solid rgba(224, 31, 95, 0.2)" }}>
@@ -319,7 +346,10 @@ export default function MaintenanceForm() {
       {/* Vehiculo y Odometro */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>ID Vehiculo (Placa/VIN) *</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+            ID Vehiculo (Placa/VIN) *
+            <HelpTip title="Vehiculo (obligatorio)" text="Identificacion unica del vehiculo. Escriba la placa (ej: ABC-123) o el VIN y seleccione de la lista. Si el vehiculo no existe en el catalogo, use la opcion '+ Guardar vehiculo' para registrarlo. La placa se guarda tal como aparece en el catalogo y es la clave con la que se relacionan todos sus eventos." />
+          </label>
           <VehicleCombobox
             value={formData.vehicle_id}
             onChange={(v) => handleSelectChange("vehicle_id", v)}
@@ -331,7 +361,10 @@ export default function MaintenanceForm() {
           {fieldError("vehicle_id")}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>Odometro / Horas *</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+            Odometro / Horas *
+            <HelpTip title="Odometro o horas (obligatorio)" text="Lectura actual del equipo al momento del evento: kilometros para vehiculos o horas motor para maquinaria. Ej: 145000 km o 3200 h. Use siempre la misma unidad para poder comparar entre eventos. La lectura debe ser mayor o igual a la ultima lectura registrada en la bitacora del vehiculo." />
+          </label>
           <input
             type="number"
             name="current_odometer"
@@ -350,6 +383,7 @@ export default function MaintenanceForm() {
       <div className="mb-6">
         <SearchableSelect
           label="Tipo de Evento"
+          helpText="Clase de intervencion: Preventivo (mantenimiento programado), Correctivo (reparacion de una falla), Predictivo, etc. Obligatorio. Es el principal agrupador de los reportes: el dashboard cuenta y suma costos por tipo de evento. Escriba para filtrar la lista."
           value={formData.event_type}
           options={categories.event_type.map((c) => ({ name: c.name, label: c.label }))}
           onChange={(v) => handleSelectChange("event_type", v)}
@@ -360,10 +394,43 @@ export default function MaintenanceForm() {
         {fieldError("event_type")}
       </div>
 
+      {/* Cierre del evento */}
+      <div className="flex items-center gap-3 mb-6 p-3 rounded-xl" style={{ backgroundColor: "var(--graphite-800)", border: "1px solid var(--graphite-700)" }}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={closedNow}
+          onClick={handleToggleClosed}
+          className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer"
+          style={{ backgroundColor: closedNow ? "var(--tuscan-sun-500)" : "var(--graphite-600)" }}
+        >
+          <span
+            className="inline-block h-5 w-5 rounded-full transition-transform"
+            style={{ backgroundColor: "var(--graphite-50)", transform: closedNow ? "translateX(22px)" : "translateX(2px)" }}
+          />
+        </button>
+        <div>
+          <span className="text-sm font-medium" style={{ color: "var(--graphite-200)" }}>
+            {closedNow
+              ? "Evento cerrado — el vehiculo ya salio del taller"
+              : "Evento abierto — el vehiculo no ha salido del taller, esperando cierre"}
+            <HelpTip title="Cierre inmediato del evento" text="Activado: el vehiculo ya salio del taller; al guardar, el evento se registra como Cerrado con su fecha y hora de salida, y NO aparecera en 'Eventos Abiertos' del dashboard. Desactivado: el evento se guarda Abierto (sin salida), aparece en 'Eventos Abiertos' del dashboard y lo cierras ahi con el boton 'Cerrar Evento'." />
+          </span>
+          <p className="text-xs mt-0.5" style={{ color: "var(--graphite-500)" }}>
+            {closedNow
+              ? "Se guarda con su fecha de salida y va directo al historial."
+              : "El evento quedara abierto: aparecera en 'Eventos Abiertos' del dashboard y ahi lo cierras."}
+          </p>
+        </div>
+      </div>
+
       {/* Fechas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>Fecha/Hora Falla *</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+            Fecha/Hora Falla *
+            <HelpTip title="Fecha de la falla (obligatoria)" text="Fecha y hora en que se detecto la falla o se programo el trabajo. Ej: 26/09/2026 08:30. Debe ser anterior o igual a la Entrada Taller. Es la fecha que usa el sistema para ordenar la bitacora y las graficas mensuales." />
+          </label>
           <input
             type="datetime-local"
             name="failure_timestamp"
@@ -375,7 +442,10 @@ export default function MaintenanceForm() {
           {fieldError("failure_timestamp")}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>Entrada Taller *</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+            Entrada Taller *
+            <HelpTip title="Entrada al taller (obligatoria)" text="Fecha y hora en que el vehiculo ingresa al taller. Obligatorio; debe ser igual o posterior a la Fecha/Hora Falla. Junto con la Salida Taller define el tiempo de estadia del vehiculo, que el sistema usa para calcular el MTTR (tiempo medio de reparacion)." />
+          </label>
           <input
             type="datetime-local"
             name="workshop_entry_time"
@@ -387,13 +457,18 @@ export default function MaintenanceForm() {
           {fieldError("workshop_entry_time")}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>Salida Taller</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: closedNow ? "var(--graphite-300)" : "var(--graphite-500)" }}>
+            Salida Taller
+            {closedNow && <span style={{ color: "var(--raspberry-red-400)" }}> *</span>}
+            <HelpTip title="Salida del taller" text="Fecha y hora en que el vehiculo sale del taller. Con el switch 'Evento cerrado' activo es obligatoria y se autocomplea con la hora actual (ajustela si salio antes); debe ser posterior a la Entrada Taller. Con este campo se calcula el tiempo de estadia (MTTR). Con el switch desactivado este campo no aplica: el evento queda abierto." />
+          </label>
           <input
             type="datetime-local"
             name="workshop_exit_time"
-            value={formData.workshop_exit_time}
+            value={closedNow ? formData.workshop_exit_time : ""}
             onChange={handleChange}
-            className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
+            disabled={!closedNow}
+            className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
             style={errorStyle("workshop_exit_time")}
           />
           {fieldError("workshop_exit_time")}
@@ -405,6 +480,7 @@ export default function MaintenanceForm() {
         <div>
           <SearchableSelect
             label="Sistema Afectado"
+            helpText="Area o sistema del vehiculo donde ocurrio la falla (ej: Frenos, Motor, Sistema electrico). Obligatorio. Permite agrupar las fallas por zona del vehiculo y ver en el dashboard que sistemas fallan mas seguido."
             value={formData.system_category}
             options={categories.system_category.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("system_category", v)}
@@ -417,6 +493,7 @@ export default function MaintenanceForm() {
         <div>
           <SearchableSelect
             label="Componente"
+            helpText="Parte especifica dentro del sistema afectado (ej: pastillas de freno, alternador, bomba de agua). Obligatorio. Mientras mas especifico, mas util es el historial para decidir que repuestos conviene tener en stock."
             value={formData.component_id}
             options={categories.component.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("component_id", v)}
@@ -433,6 +510,7 @@ export default function MaintenanceForm() {
         <div>
           <SearchableSelect
             label="Accion Realizada"
+            helpText="Que se hizo para resolver el evento (ej: Reemplazado, Reparado, Ajustado, Lubricado). Obligatorio. Registre la intervencion efectivamente realizada, no la propuesta."
             value={formData.action_taken}
             options={categories.action_taken.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("action_taken", v)}
@@ -445,6 +523,7 @@ export default function MaintenanceForm() {
         <div>
           <SearchableSelect
             label="Causa Raiz"
+            helpText="Por que ocurrio la falla (ej: Desgaste natural, Error del operador, Defecto de repuesto, Accidente). Opcional en este paso, pero muy recomendable: la causa raiz es la base de las graficas de tendencia de causas y de las acciones preventivas."
             value={formData.root_cause}
             options={categories.root_cause.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("root_cause", v)}
@@ -458,7 +537,10 @@ export default function MaintenanceForm() {
       {/* Horas y Costo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>Horas Hombre Efectivas</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: closedNow ? "var(--graphite-300)" : "var(--graphite-500)" }}>
+            Horas Hombre Efectivas
+            <HelpTip title="Horas de trabajo" text="Horas reales de trabajo del tecnico o mecanico dedicadas a esta reparacion, sin contar tiempos de espera o traslados. Ej: 2.5. Se suman en los reportes de horas trabajadas y ayudan a calcular el costo real de la mano de obra. Con el switch 'Evento cerrado' desactivado el trabajo no termino: las horas se determinan al cerrar el evento desde el dashboard." />
+          </label>
           <input
             type="number"
             name="effective_work_hours"
@@ -466,13 +548,17 @@ export default function MaintenanceForm() {
             onChange={handleChange}
             placeholder="Horas reales de trabajo"
             step="any"
-            className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
+            disabled={!closedNow}
+            className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
             style={errorStyle("effective_work_hours")}
           />
           {fieldError("effective_work_hours")}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>Costo Total Reparacion</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: closedNow ? "var(--graphite-300)" : "var(--graphite-500)" }}>
+            Costo Total Reparacion
+            <HelpTip title="Costo" text="Costo total de la reparacion en la moneda local, incluyendo repuestos y mano de obra. Ej: 1500.00. Es el dato que alimenta las graficas de costos por categoria, por vehiculo y la tendencia mensual del dashboard. Con el switch 'Evento cerrado' desactivado la reparacion no termino: el costo se determina al cerrar el evento desde el dashboard." />
+          </label>
           <input
             type="number"
             name="repair_cost"
@@ -480,12 +566,19 @@ export default function MaintenanceForm() {
             onChange={handleChange}
             placeholder="0.00"
             step="any"
-            className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
+            disabled={!closedNow}
+            className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
             style={errorStyle("repair_cost")}
           />
           {fieldError("repair_cost")}
         </div>
       </div>
+
+      {!closedNow && (
+        <p className="text-xs mb-6" style={{ color: "var(--graphite-500)" }}>
+          Horas y costo se determinan al cerrar el evento desde el dashboard.
+        </p>
+      )}
 
       {/* Botones */}
       <div className="flex gap-4">

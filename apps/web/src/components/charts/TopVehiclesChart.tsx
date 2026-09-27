@@ -3,6 +3,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import type { VehicleData } from "@/lib/services/indicatorService";
 import { CHART_TOOLTIP_STYLE } from "./chartStyles";
+import HelpTip from "@/components/HelpTip";
 
 const COLORS = ["#E01F5F", "#F7B708", "#669991", "#0051FF", "#A3A3A3"];
 
@@ -10,12 +11,16 @@ interface Props {
   data: VehicleData[];
   onFilter?: (key: string) => void;
   activeFilter?: string | null;
+  helpText?: string;
 }
 
-export default function TopVehiclesChart({ data, onFilter, activeFilter }: Props) {
+export default function TopVehiclesChart({ data, onFilter, activeFilter, helpText }: Props) {
   return (
     <div className="rounded-2xl border p-6 transition-all" style={{ backgroundColor: "var(--graphite-900)", borderColor: activeFilter ? "var(--tuscan-sun-500)" : "var(--graphite-800)" }}>
-      <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--graphite-200)" }}>Top 5 vehiculos con mas fallas</h3>
+      <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--graphite-200)" }}>
+        Top 5 vehiculos con mas fallas
+        {helpText && <HelpTip text={helpText} />}
+      </h3>
       {data.length === 0 ? (
         <p className="text-center py-10 text-sm" style={{ color: "var(--graphite-500)" }}>Sin datos</p>
       ) : (
