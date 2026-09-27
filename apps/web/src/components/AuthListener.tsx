@@ -5,6 +5,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@jostools/firebase-config";
 import { useAppDispatch } from "@/lib/redux/hooks";
 import { setUser } from "@/lib/redux/slices/authSlice";
+import { resetDropdownData } from "@/lib/redux/slices/dropdownDataSlice";
+import { resetVehicles } from "@/lib/redux/slices/vehiclesSlice";
 import { saveUser, getUser } from "@/lib/services/userService";
 
 export default function AuthListener({ children }: { children: React.ReactNode }) {
@@ -34,6 +36,8 @@ export default function AuthListener({ children }: { children: React.ReactNode }
         }));
       } else {
         dispatch(setUser(null));
+        dispatch(resetDropdownData());
+        dispatch(resetVehicles());
       }
     });
 

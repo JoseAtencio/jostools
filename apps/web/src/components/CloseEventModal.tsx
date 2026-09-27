@@ -100,7 +100,7 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Salida del Taller *</label>
-            <input type="datetime-local" name="workshop_exit_time" value={formData.workshop_exit_time} onChange={handleChange} required className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+            <input type="datetime-local" name="workshop_exit_time" value={formData.workshop_exit_time} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -127,11 +127,11 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Horas Efectivas</label>
-              <input type="number" name="effective_work_hours" value={formData.effective_work_hours} onChange={handleChange} placeholder="Horas de trabajo" step="0.01" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+              <input type="number" name="effective_work_hours" value={formData.effective_work_hours} onChange={handleChange} placeholder="Horas de trabajo" step="any" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Costo Reparacion</label>
-              <input type="number" name="repair_cost" value={formData.repair_cost} onChange={handleChange} placeholder="0.00" step="0.01" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+              <input type="number" name="repair_cost" value={formData.repair_cost} onChange={handleChange} placeholder="0.00" step="any" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
             </div>
           </div>
 

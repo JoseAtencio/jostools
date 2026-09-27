@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useAppSelector } from "@/lib/redux/hooks";
 import { createMaintenanceEvent } from "@/lib/services/maintenanceService";
 import { getCategoriesByGroup, addCategory } from "@/lib/services/categoryService";
+import { normalizeVehicleId } from "@/lib/services/vehicleService";
 import SearchableSelect from "@/components/SearchableSelect";
+import VehicleCombobox from "@/components/VehicleCombobox";
 import type { EventType, SystemCategory, MaintenanceEventInput } from "@/types/maintenance";
 import type { Category, CategoryGroup } from "@/types/categories";
 
@@ -71,15 +73,29 @@ export default function QuickOpenForm({ onSuccess, onCancel }: QuickOpenFormProp
     e.preventDefault();
     setError(null);
 
-    if (!formData.vehicle_id || !formData.event_type || !formData.failure_timestamp || !formData.workshop_entry_time || !formData.system_category) {
-      setError("Todos los campos son requeridos");
+    const missing: string[] = [];
+    if (!normalizeVehicleId(formData.vehicle_id)) missing.push("Vehiculo");
+    if (!formData.event_type) missing.push("Tipo de evento");
+    if (!formData.system_category) missing.push("Categoria");
+    if (!formData.failure_timestamp) missing.push("Fecha de falla");
+    if (!formData.workshop_entry_time) missing.push("Entrada al taller");
+    if (missing.length > 0) {
+      setError(`Faltan: ${missing.join(", ")}`);
+      return;
+    }
+    if (
+      formData.workshop_entry_time &&
+      formData.failure_timestamp &&
+      new Date(formData.workshop_entry_time) < new Date(formData.failure_timestamp)
+    ) {
+      setError("La fecha de entrada no puede ser anterior a la fecha de falla");
       return;
     }
 
     setLoading(true);
     try {
       const event: MaintenanceEventInput = {
-        vehicle_id: formData.vehicle_id,
+        vehicle_id: normalizeVehicleId(formData.vehicle_id),
         current_odometer: 0,
         event_type: formData.event_type as EventType,
         failure_timestamp: formData.failure_timestamp,
@@ -127,7 +143,7 @@ export default function QuickOpenForm({ onSuccess, onCancel }: QuickOpenFormProp
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Vehiculo *</label>
-            <input type="text" name="vehicle_id" value={formData.vehicle_id} onChange={handleChange} placeholder="Placa o VIN" required className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+            <VehicleCombobox value={formData.vehicle_id} onChange={(v) => handleSelectChange("vehicle_id", v)} enterpriseId={user?.enterpriseId ?? null} placeholder="Placa o VIN" name="vehicle_id" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -153,12 +169,12 @@ export default function QuickOpenForm({ onSuccess, onCancel }: QuickOpenFormProp
 
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Fecha/Hora de Falla *</label>
-            <input type="datetime-local" name="failure_timestamp" value={formData.failure_timestamp} onChange={handleChange} required className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+            <input type="datetime-local" name="failure_timestamp" value={formData.failure_timestamp} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>Entrada al Taller *</label>
-            <input type="datetime-local" name="workshop_entry_time" value={formData.workshop_entry_time} onChange={handleChange} required className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+            <input type="datetime-local" name="workshop_entry_time" value={formData.workshop_entry_time} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
           </div>
 
           <div className="flex gap-3 pt-2">

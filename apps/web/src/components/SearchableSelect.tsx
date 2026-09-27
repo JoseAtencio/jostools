@@ -14,6 +14,7 @@ interface SearchableSelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
   onCreateNew?: (search: string) => void;
 }
 
@@ -24,6 +25,7 @@ export default function SearchableSelect({
   onChange,
   placeholder = "Buscar o seleccionar...",
   required = false,
+  disabled = false,
   onCreateNew,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,6 +51,13 @@ export default function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+      setSearch("");
+    }
+  }, [disabled]);
+
   const handleSelect = (name: string) => {
     onChange(name);
     setIsOpen(false);
@@ -69,11 +78,13 @@ export default function SearchableSelect({
 
       <button
         type="button"
+        disabled={disabled}
         onClick={() => {
+          if (disabled) return;
           setIsOpen(!isOpen);
           setTimeout(() => inputRef.current?.focus(), 100);
         }}
-        className="w-full px-4 py-3 rounded-xl text-sm text-left flex items-center justify-between transition-all cursor-pointer"
+        className="w-full px-4 py-3 rounded-xl text-sm text-left flex items-center justify-between transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         style={{
           ...inputStyle,
           borderColor: isOpen ? "var(--tuscan-sun-500)" : "var(--graphite-600)",

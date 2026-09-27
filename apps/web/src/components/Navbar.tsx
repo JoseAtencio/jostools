@@ -5,9 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { setUser, logout } from "@/lib/redux/slices/authSlice";
+import { setMembers, setInvites } from "@/lib/redux/slices/dropdownDataSlice";
 import { getEnterprisesByOwner, getEnterprise } from "@/lib/services/enterpriseService";
 import { updateUserEnterprise, getUsersByEnterprise, type AppUser } from "@/lib/services/userService";
-import { createInvite, getMyActiveInvites, type Invite } from "@/lib/services/inviteService";
+import { createInvite, getMyActiveInvites } from "@/lib/services/inviteService";
 import MemberModal from "@/components/MemberModal";
 import type { Enterprise } from "@/types/enterprise";
 
@@ -29,16 +30,19 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [memberEnterprises, setMemberEnterprises] = useState<Enterprise[]>([]);
-  const [activeInvites, setActiveInvites] = useState<Invite[]>([]);
-  const [enterpriseMembers, setEnterpriseMembers] = useState<AppUser[]>([]);
   const [inviteModal, setInviteModal] = useState<{ open: boolean; phase: "loading" | "done" | "error"; code?: string; error?: string }>({ open: false, phase: "loading" });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [invitesVersion, setInvitesVersion] = useState(0);
-  const [membersVersion, setMembersVersion] = useState(0);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [invitesLoading, setInvitesLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<AppUser | null>(null);
   const generateSeqRef = useRef(0);
   const generateInFlightRef = useRef(false);
+  const membersInFlightRef = useRef(false);
+  const invitesInFlightRef = useRef(false);
   const isOwner = !!enterprise && enterprise.ownerId === user?.uid;
+  const dropdownData = useAppSelector((s) => s.dropdownData);
+  const cachedMembers = enterprise ? dropdownData.members[enterprise.id] : undefined;
+  const cachedInvites = enterprise ? dropdownData.invites[enterprise.id] : undefined;
   const membershipsKey = (user?.memberships || []).join(",");
 
   useEffect(() => {
@@ -66,44 +70,63 @@ export default function Navbar() {
     return () => { cancelled = true; };
   }, [membershipsKey, myEnterprises, user?.enterpriseId, ownedLoaded]);
 
+  const loadMembers = async (force = false) => {
+    if (!enterprise) return;
+    if (membersInFlightRef.current && !force) return;
+    const cached = dropdownData.members[enterprise.id];
+    if (!force && cached && Date.now() - cached.fetchedAt < 60_000) return;
+    membersInFlightRef.current = true;
+    setMembersLoading(true);
+    try {
+      const members = await getUsersByEnterprise(enterprise.id);
+      let items: AppUser[];
+      if (isOwner) {
+        items = [...members].sort((a, b) => {
+          const aOwner = a.uid === enterprise.ownerId ? 0 : 1;
+          const bOwner = b.uid === enterprise.ownerId ? 0 : 1;
+          if (aOwner !== bOwner) return aOwner - bOwner;
+          return a.displayName.localeCompare(b.displayName, "es");
+        });
+      } else {
+        items = members.filter((m) => m.uid === enterprise.ownerId);
+      }
+      dispatch(setMembers({ enterpriseId: enterprise.id, items, fetchedAt: Date.now() }));
+    } catch (err) {
+      console.error("No se pudieron cargar los miembros", err);
+    } finally {
+      membersInFlightRef.current = false;
+      setMembersLoading(false);
+    }
+  };
+
+  const loadInvites = async (force = false) => {
+    if (!isOwner || !enterprise) return;
+    if (invitesInFlightRef.current && !force) return;
+    const cached = dropdownData.invites[enterprise.id];
+    if (!force && cached && Date.now() - cached.fetchedAt < 60_000) return;
+    invitesInFlightRef.current = true;
+    setInvitesLoading(true);
+    try {
+      const invites = await getMyActiveInvites(enterprise.id, user?.uid || "");
+      dispatch(setInvites({ enterpriseId: enterprise.id, items: invites, fetchedAt: Date.now() }));
+    } catch (err) {
+      console.error("No se pudieron cargar los codigos de invitacion", err);
+    } finally {
+      invitesInFlightRef.current = false;
+      setInvitesLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!showDropdown) return;
-    if (!isOwner || !enterprise) {
-      setActiveInvites([]);
-      return;
-    }
-    let cancelled = false;
-    getMyActiveInvites(enterprise.id, user?.uid || "")
-      .then((inv) => { if (!cancelled) setActiveInvites(inv); })
-      .catch((err) => {
-        if (!cancelled) console.error("No se pudieron cargar los codigos de invitacion", err);
-      });
-    return () => { cancelled = true; };
-  }, [showDropdown, isOwner, enterprise?.id, user?.uid, invitesVersion]);
+    if (!isOwner || !enterprise) return;
+    loadInvites(false);
+  }, [showDropdown, isOwner, enterprise?.id, user?.uid, cachedInvites?.fetchedAt ?? 0]);
 
   useEffect(() => {
     if (!showDropdown || !enterprise) return;
-    let cancelled = false;
-    getUsersByEnterprise(enterprise.id)
-      .then((members) => {
-        if (cancelled) return;
-        if (isOwner) {
-          const sorted = [...members].sort((a, b) => {
-            const aOwner = a.uid === enterprise.ownerId ? 0 : 1;
-            const bOwner = b.uid === enterprise.ownerId ? 0 : 1;
-            if (aOwner !== bOwner) return aOwner - bOwner;
-            return a.displayName.localeCompare(b.displayName, "es");
-          });
-          setEnterpriseMembers(sorted);
-        } else {
-          setEnterpriseMembers(members.filter((m) => m.uid === enterprise.ownerId));
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) console.error("No se pudieron cargar los miembros", err);
-      });
-    return () => { cancelled = true; };
-  }, [showDropdown, enterprise?.id, isOwner, membersVersion]);
+    loadMembers(false);
+  }, [showDropdown, enterprise?.id, isOwner, cachedMembers?.fetchedAt ?? 0]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -163,14 +186,13 @@ export default function Navbar() {
       });
     } finally {
       generateInFlightRef.current = false;
-      if (generateSeqRef.current !== seq) setInvitesVersion((v) => v + 1);
     }
   };
 
   const handleCloseInviteModal = () => {
     generateSeqRef.current++;
     setInviteModal({ open: false, phase: "loading" });
-    setInvitesVersion((v) => v + 1);
+    loadInvites(true);
   };
 
   const handleCopyCode = async (code: string) => {
@@ -285,31 +307,41 @@ export default function Navbar() {
                         </div>
                       </>
                     )}
-                    {enterpriseMembers.length > 0 && (
+                    {((membersLoading && !cachedMembers) || (cachedMembers && cachedMembers.items.length > 0)) && (
                       <div className="p-2" style={{ borderTop: "1px solid var(--graphite-700)" }}>
                         <p className="text-[10px] font-bold uppercase tracking-wider px-2 py-1" style={{ color: "var(--graphite-500)" }}>Miembros</p>
                         <div className="max-h-40 overflow-y-auto px-1 pb-1 space-y-0.5">
-                          {enterpriseMembers.map((m) => (
-                            <button key={m.uid} type="button" onClick={() => setSelectedMember(m)} className="w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors" style={{ backgroundColor: "transparent" }}
-                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--graphite-700)"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
-                            >
-                              {m.photoURL ? (
-                                <img src={m.photoURL} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                              ) : (
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: "var(--graphite-700)", color: "var(--tuscan-sun-400)" }}>
-                                  {(m.displayName || m.email || "?").charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <p className="text-sm flex-1 truncate" style={{ color: "var(--graphite-200)" }}>{m.displayName}</p>
-                              {m.uid === enterprise.ownerId && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: "var(--graphite-700)", color: "var(--graphite-300)" }}>Dueño</span>
-                              )}
-                              {m.uid === user?.uid && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(247, 183, 8, 0.15)", color: "var(--tuscan-sun-400)" }}>Tu</span>
-                              )}
-                            </button>
-                          ))}
+                          {membersLoading && !cachedMembers ? (
+                            <div className="flex items-center gap-2 px-2 py-1.5">
+                              <svg className="w-4 h-4 animate-spin flex-shrink-0" style={{ color: "var(--tuscan-sun-400)" }} fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                              </svg>
+                              <p className="text-[10px]" style={{ color: "var(--graphite-500)" }}>Cargando...</p>
+                            </div>
+                          ) : (
+                            cachedMembers?.items.map((m) => (
+                              <button key={m.uid} type="button" onClick={() => setSelectedMember(m)} className="w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors" style={{ backgroundColor: "transparent" }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--graphite-700)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                              >
+                                {m.photoURL ? (
+                                  <img src={m.photoURL} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: "var(--graphite-700)", color: "var(--tuscan-sun-400)" }}>
+                                    {(m.displayName || m.email || "?").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <p className="text-sm flex-1 truncate" style={{ color: "var(--graphite-200)" }}>{m.displayName}</p>
+                                {m.uid === enterprise.ownerId && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: "var(--graphite-700)", color: "var(--graphite-300)" }}>Dueño</span>
+                                )}
+                                {m.uid === user?.uid && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(247, 183, 8, 0.15)", color: "var(--tuscan-sun-400)" }}>Tu</span>
+                                )}
+                              </button>
+                            ))
+                          )}
                         </div>
                       </div>
                     )}
@@ -331,10 +363,18 @@ export default function Navbar() {
                           Generar codigo
                         </button>
                         <div className="px-1 space-y-1">
-                          {activeInvites.length === 0 ? (
+                          {invitesLoading && !cachedInvites ? (
+                            <div className="flex items-center justify-center gap-2 px-2 py-1.5">
+                              <svg className="w-4 h-4 animate-spin flex-shrink-0" style={{ color: "var(--tuscan-sun-400)" }} fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                              </svg>
+                              <p className="text-[10px]" style={{ color: "var(--graphite-500)" }}>Cargando...</p>
+                            </div>
+                          ) : !cachedInvites || cachedInvites.items.length === 0 ? (
                             <p className="text-[10px] text-center py-1" style={{ color: "var(--graphite-500)" }}>No hay codigos activos</p>
                           ) : (
-                            activeInvites.map((inv) => (
+                            cachedInvites.items.map((inv) => (
                               <div key={inv.code} className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ backgroundColor: "var(--graphite-900)", border: "1px solid var(--graphite-700)" }}>
                                 <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: copiedCode === inv.code ? "var(--tuscan-sun-400)" : "var(--ash-grey-400)" }} fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -441,7 +481,7 @@ export default function Navbar() {
         enterpriseId={enterprise.id}
         memberIsOwner={selectedMember.uid === enterprise.ownerId}
         canRemove={isOwner && selectedMember.uid !== enterprise.ownerId}
-        onRemoved={() => { setSelectedMember(null); setMembersVersion((v) => v + 1); }}
+        onRemoved={() => { setSelectedMember(null); loadMembers(true); }}
         onClose={() => setSelectedMember(null)}
       />
     )}

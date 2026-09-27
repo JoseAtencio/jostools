@@ -108,6 +108,19 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /jostools/config/vehicles/{vehicleId} {
+      allow read: if isSignedIn() && resource.data.enterpriseId == myEnterpriseId();
+      allow create: if isSignedIn()
+        && request.resource.data.enterpriseId == myEnterpriseId()
+        && request.resource.data.vehicle_id is string
+        && request.resource.data.vehicle_id != ""
+        && request.resource.data.brand is string
+        && request.resource.data.model is string
+        && request.resource.data.year is number;
+      allow update: if isSignedIn() && resource.data.enterpriseId == myEnterpriseId();
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
