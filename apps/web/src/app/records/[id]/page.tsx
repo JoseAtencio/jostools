@@ -5,10 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import AuthGuard from "@/components/AuthGuard";
 import CloseEventModal from "@/components/CloseEventModal";
+import ReopenEventModal from "@/components/ReopenEventModal";
 import ExportFormatModal from "@/components/ExportFormatModal";
 import HelpTip from "@/components/HelpTip";
 import { useAppSelector } from "@/lib/redux/hooks";
-import { getEventById, exportEventsToExcel } from "@/lib/services/maintenanceService";
+import { getEventById, buildEventChanges, saveEventChanges, exportEventsToExcel } from "@/lib/services/maintenanceService";
 import { exportEventsToPdf } from "@/lib/services/pdfExportService";
 import { calculateIndicators, formatHours } from "@/lib/services/indicatorService";
 import { getVehicleById } from "@/lib/services/vehicleService";
@@ -18,6 +19,8 @@ import {
   SYSTEM_CATEGORY_LABELS,
   ROOT_CAUSE_LABELS,
   EVENT_STATUS_LABELS,
+  BLOCK_REASON_LABELS,
+  BLOCK_REASON_OPTIONS,
   type MaintenanceEvent,
 } from "@/types/maintenance";
 import type { Vehicle } from "@/types/vehicle";
@@ -45,7 +48,10 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [blockSaving, setBlockSaving] = useState(false);
+  const [blockError, setBlockError] = useState<string | null>(null);
 
   const load = async () => {
     if (!user?.enterpriseId) return;
@@ -77,6 +83,24 @@ export default function EventDetailPage() {
     if (format === "excel") exportEventsToExcel([event], calculateIndicators([event]));
     else exportEventsToPdf([event], `Evento_${event.vehicle_id}`);
     setExportOpen(false);
+  };
+
+  const handleBlockReason = async (value: string) => {
+    if (!event) return;
+    setBlockSaving(true);
+    setBlockError(null);
+    try {
+      const changes = buildEventChanges(event, { block_reason: value });
+      await saveEventChanges(event.id, { block_reason: value }, changes, user?.displayName || "Usuario");
+      setEvent({ ...event, block_reason: value });
+      getEventById(id)
+        .then((ev) => { if (ev && ev.enterpriseId === user?.enterpriseId) setEvent(ev); })
+        .catch(() => {});
+    } catch {
+      setBlockError("No se pudo guardar el motivo de bloqueo");
+    } finally {
+      setBlockSaving(false);
+    }
   };
 
   if (loading) {
@@ -128,7 +152,10 @@ export default function EventDetailPage() {
     { label: "Causa raiz", value: event.root_cause ? ROOT_CAUSE_LABELS[event.root_cause] : "--" },
     { label: "Horas efectivas", value: event.effective_work_hours != null ? `${event.effective_work_hours} h` : isOpen ? "Se determina al cierre" : "--", help: isOpen ? "Las horas se registran al cerrar el evento." : "Horas reales de trabajo del tecnico." },
     { label: "Costo reparacion", value: `$${event.repair_cost.toLocaleString("es-ES")}` },
+    { label: "Observacion", value: event.observation?.trim() ? event.observation : "--" },
+    ...(event.block_reason ? [{ label: "Motivo de bloqueo", value: BLOCK_REASON_LABELS[event.block_reason] ?? event.block_reason }] : []),
     { label: "Creado", value: formatDateTime(event.created_at) },
+    ...(event.edited_at ? [{ label: "Ultima edicion", value: formatDateTime(event.edited_at), help: `Editado por ${event.edited_by || "Usuario"}. El detalle completo de los cambios esta en el historial.` }] : []),
   ];
 
   return (
@@ -147,7 +174,7 @@ export default function EventDetailPage() {
             </button>
             <h1 className="text-2xl font-bold" style={{ color: "var(--graphite-100)" }}>
               Evento {event.vehicle_id}
-              <HelpTip title="Detalle del evento" text="Informacion completa del evento de mantenimiento. Si el evento esta abierto puedes editarlo o cerrarlo; tambien puedes exportarlo en Excel o PDF." />
+              <HelpTip title="Detalle del evento" text="Informacion completa del evento de mantenimiento. Si esta abierto puedes editarlo o cerrarlo; si esta cerrado puedes reabrirlo. Toda modificacion queda registrada en el historial de ediciones." />
             </h1>
             <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{
               backgroundColor: isOpen ? "rgba(247, 183, 8, 0.15)" : "rgba(102, 153, 145, 0.15)",
@@ -155,6 +182,15 @@ export default function EventDetailPage() {
             }}>
               {EVENT_STATUS_LABELS[event.status || "PENDING"]}
             </span>
+            {event.edited_at && (
+              <span
+                className="px-2.5 py-1 rounded-full text-xs font-medium cursor-help"
+                style={{ backgroundColor: "rgba(0, 81, 255, 0.15)", color: "var(--crayola-blue-400)" }}
+                title={`Ultima edicion: ${formatDateTime(event.edited_at)} por ${event.edited_by || "Usuario"}`}
+              >
+                Editado
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3 flex-wrap mb-6">
@@ -162,28 +198,64 @@ export default function EventDetailPage() {
               <>
                 <button
                   onClick={() => router.push(`/records/${event.id}/editar`)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
                   style={{ backgroundColor: "rgba(0, 81, 255, 0.15)", color: "var(--crayola-blue-400)", border: "1px solid rgba(0, 81, 255, 0.3)" }}
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   Editar
                 </button>
                 <button
                   onClick={() => setCloseOpen(true)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
                   style={{ backgroundColor: "rgba(102, 153, 145, 0.15)", color: "var(--ash-grey-400)", border: "1px solid rgba(102, 153, 145, 0.3)" }}
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                   Cerrar Evento
                 </button>
               </>
             )}
+            {!isOpen && (
+              <button
+                onClick={() => setReopenOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
+                style={{ backgroundColor: "rgba(224, 31, 95, 0.15)", color: "var(--raspberry-red-400)", border: "1px solid rgba(224, 31, 95, 0.3)" }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Reabrir
+              </button>
+            )}
             <button
               onClick={() => setExportOpen(true)}
-              className="px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
               style={{ backgroundColor: "rgba(247, 183, 8, 0.15)", color: "var(--tuscan-sun-400)", border: "1px solid rgba(247, 183, 8, 0.3)" }}
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Exportar
             </button>
           </div>
+
+          {isOpen && (
+            <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: "var(--graphite-900)", border: "1px solid var(--graphite-800)" }}>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+                Motivo de bloqueo
+                <HelpTip title="Motivo de bloqueo" text="Marca si el evento esta detenido (falta repuesto, falta de pago, sin disponibilidad). Los eventos bloqueados cuentan en el backlog del Informe Mensual. Se guarda automaticamente." />
+              </label>
+              <select
+                value={event.block_reason || ""}
+                onChange={(e) => { handleBlockReason(e.target.value); }}
+                disabled={blockSaving}
+                className="px-4 py-2.5 rounded-xl text-sm outline-none cursor-pointer disabled:opacity-50"
+                style={{ backgroundColor: "var(--graphite-800)", border: "1px solid var(--graphite-600)", color: "var(--graphite-100)" }}
+              >
+                {BLOCK_REASON_OPTIONS.map((o) => (
+                  <option key={o.name} value={o.name}>{o.label}</option>
+                ))}
+              </select>
+              {blockError && (
+                <p className="text-xs mt-1.5" style={{ color: "var(--raspberry-red-400)" }}>{blockError}</p>
+              )}
+            </div>
+          )}
 
           <div className="rounded-2xl border" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px" style={{ backgroundColor: "var(--graphite-800)" }}>
@@ -198,11 +270,47 @@ export default function EventDetailPage() {
               ))}
             </div>
           </div>
+
+          {event.edit_history && event.edit_history.length > 0 && (
+            <div className="rounded-2xl border p-6 mt-6" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <h2 className="text-base font-bold" style={{ color: "var(--graphite-100)" }}>
+                  Historial de ediciones
+                  <HelpTip title="Historial de ediciones" text="Cada vez que se modifica el evento (editar campos o reabrirlo) se registra la fecha, el usuario y cada campo cambiado con su valor anterior y el nuevo." />
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "rgba(0, 81, 255, 0.15)", color: "var(--crayola-blue-400)" }}>
+                  {event.edit_history.length} {event.edit_history.length === 1 ? "edicion" : "ediciones"}
+                </span>
+              </div>
+              <div className="space-y-4">
+                {[...event.edit_history].reverse().map((entry, i) => (
+                  <div key={i} className={i > 0 ? "pt-4" : ""} style={i > 0 ? { borderTop: "1px solid var(--graphite-800)" } : undefined}>
+                    <p className="text-xs font-semibold mb-2" style={{ color: "var(--tuscan-sun-400)" }}>
+                      {formatDateTime(entry.at)} — <span style={{ color: "var(--graphite-300)" }}>{entry.by}</span>
+                    </p>
+                    <ul className="space-y-1.5">
+                      {entry.changes.map((c, j) => (
+                        <li key={j} className="text-xs flex items-start gap-2 flex-wrap" style={{ color: "var(--graphite-400)" }}>
+                          <span className="font-semibold" style={{ color: "var(--graphite-200)" }}>{c.label}:</span>
+                          <span style={{ color: "var(--raspberry-red-400)" }}>{c.from}</span>
+                          <span style={{ color: "var(--graphite-600)" }}>&rarr;</span>
+                          <span style={{ color: "var(--ash-grey-400)" }}>{c.to}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
       {closeOpen && (
         <CloseEventModal event={event} onSuccess={() => { setCloseOpen(false); load(); }} onCancel={() => setCloseOpen(false)} />
+      )}
+      {reopenOpen && (
+        <ReopenEventModal event={event} onSuccess={() => { setReopenOpen(false); load(); }} onCancel={() => setReopenOpen(false)} />
       )}
       {exportOpen && (
         <ExportFormatModal count={1} titulo="evento" onCancel={() => setExportOpen(false)} onExport={handleExport} />

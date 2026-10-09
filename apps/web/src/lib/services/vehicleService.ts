@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from "@firebase/firestore";
+import { collection, deleteField, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "@firebase/firestore";
 import { db } from "@jostools/firebase-config";
 import type { Vehicle, VehicleInput } from "@/types/vehicle";
 
@@ -18,6 +18,7 @@ function toVehicle(id: string, data: Record<string, any>): Vehicle {
     enterpriseId: data.enterpriseId ?? "",
     created_by: data.created_by ?? "",
     created_at: typeof data.created_at === "string" ? data.created_at : new Date().toISOString(),
+    fleet_group: data.fleet_group,
   };
 }
 
@@ -59,6 +60,7 @@ export async function createVehicle(data: VehicleInput): Promise<Vehicle> {
     enterpriseId: data.enterpriseId,
     created_by: data.created_by,
     created_at,
+    ...(data.fleet_group?.trim() ? { fleet_group: data.fleet_group.trim() } : {}),
   });
   return {
     id,
@@ -69,5 +71,11 @@ export async function createVehicle(data: VehicleInput): Promise<Vehicle> {
     enterpriseId: data.enterpriseId,
     created_by: data.created_by,
     created_at,
+    ...(data.fleet_group?.trim() ? { fleet_group: data.fleet_group.trim() } : {}),
   };
+}
+
+export async function updateVehicleFleetGroup(vehicle: Vehicle, fleetGroup: string): Promise<void> {
+  const trimmed = fleetGroup.trim();
+  await updateDoc(doc(vehiclesRef, vehicle.id), trimmed ? { fleet_group: trimmed } : { fleet_group: deleteField() });
 }

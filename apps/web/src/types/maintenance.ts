@@ -4,6 +4,19 @@ export type SystemCategory = "ENGINE" | "TRANSMISSION" | "BRAKES" | "ELECTRICAL"
 export type RootCause = "WEAR_AND_TEAR" | "OPERATOR_ERROR" | "PART_DEFECT" | "ACCIDENT";
 export type EventStatus = "PENDING" | "COMPLETED";
 
+export interface EditChange {
+  field: string;
+  label: string;
+  from: string;
+  to: string;
+}
+
+export interface EditHistoryEntry {
+  at: string;
+  by: string;
+  changes: EditChange[];
+}
+
 export interface MaintenanceEvent {
   id: string;
   vehicle_id: string;
@@ -22,6 +35,11 @@ export interface MaintenanceEvent {
   user_id: string;
   status: EventStatus;
   enterpriseId: string;
+  edited_at?: string;
+  edited_by?: string;
+  edit_history?: EditHistoryEntry[];
+  observation?: string;
+  block_reason?: string;
 }
 
 export type MaintenanceEventInput = Omit<MaintenanceEvent, "id" | "created_at" | "status"> & { status?: EventStatus };
@@ -31,6 +49,13 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   PREVENTIVE: "Preventivo (Mantenimiento programado)",
   INSPECTION: "Inspeccion",
   PREDICTIVE: "Predictivo (Monitoreo de condicion)",
+};
+
+export const EVENT_TYPE_SHORT_LABELS: Record<EventType, string> = {
+  CORRECTIVE: "Correctivo",
+  PREVENTIVE: "Preventivo",
+  INSPECTION: "Inspeccion",
+  PREDICTIVE: "Predictivo",
 };
 
 export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
@@ -59,4 +84,36 @@ export const ROOT_CAUSE_LABELS: Record<RootCause, string> = {
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   PENDING: "Abierto",
   COMPLETED: "Cerrado",
+};
+
+export const BLOCK_REASON_OPTIONS = [
+  { name: "", label: "Sin bloqueo" },
+  { name: "FALTA_REPUESTO", label: "Falta repuesto" },
+  { name: "FALTA_PAGO", label: "Falta de pago" },
+  { name: "SIN_DISPONIBILIDAD", label: "Sin disponibilidad del usuario" },
+  { name: "OTRO", label: "Otro" },
+];
+
+export const BLOCK_REASON_LABELS: Record<string, string> = {
+  FALTA_REPUESTO: "Falta repuesto",
+  FALTA_PAGO: "Falta de pago",
+  SIN_DISPONIBILIDAD: "Sin disponibilidad del usuario",
+  OTRO: "Otro",
+};
+
+export const FIELD_LABELS: Record<string, string> = {
+  status: "Estado",
+  current_odometer: "Odometro",
+  event_type: "Tipo de evento",
+  failure_timestamp: "Fecha de falla",
+  workshop_entry_time: "Entrada al taller",
+  workshop_exit_time: "Salida del taller",
+  system_category: "Sistema afectado",
+  component_id: "Componente",
+  action_taken: "Accion realizada",
+  root_cause: "Causa raiz",
+  effective_work_hours: "Horas efectivas",
+  repair_cost: "Costo de reparacion",
+  observation: "Observacion",
+  block_reason: "Motivo de bloqueo",
 };

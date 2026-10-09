@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JosTools - Mockup UX Modulos Nuevos (Fases 1-3)</title>
+<style>
+  :root{
+    --tuscan-50:#fef8e6; --tuscan-100:#fdf1ce; --tuscan-200:#fce29c; --tuscan-300:#fad46b;
+    --tuscan-400:#f9c639; --tuscan-500:#f7b708; --tuscan-600:#c69306; --tuscan-700:#946e05;
+    --graphite-50:#f3f1f2; --graphite-100:#e7e4e5; --graphite-200:#cfc9cb; --graphite-300:#b7aeb1;
+    --graphite-400:#9f9396; --graphite-500:#87787c; --graphite-600:#6c6063; --graphite-700:#51484b;
+    --graphite-800:#363032; --graphite-900:#1b1819; --graphite-950:#131111;
+    --red-400:#e74b7f; --red-500:#e01f5f; --red-600:#b4184c;
+    --ash-300:#a3c2bd; --ash-400:#85ada7; --ash-500:#669991; --ash-700:#3d5c57;
+    --blue-300:#6696ff; --blue-400:#3374ff; --blue-500:#0051ff;
+    --green-500:#3ddc84; --green-600:#2bbf6c;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:var(--graphite-950); color:var(--graphite-50); font-size:14px; line-height:1.5;
+  }
+  .mono{ font-family:"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+
+  /* ===== Banner mockup ===== */
+  .mock-banner{
+    background:linear-gradient(90deg, var(--graphite-900), var(--graphite-800));
+    border-bottom:2px solid var(--tuscan-500); padding:10px 24px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .mock-banner .tag{
+    background:var(--tuscan-500); color:var(--graphite-950); font-size:11px; font-weight:800;
+    padding:3px 10px; border-radius:999px; letter-spacing:.08em;
+  }
+  .mock-banner p{ font-size:12.5px; color:var(--graphite-300); }
+  .mock-banner p b{ color:var(--tuscan-400); }
+
+  /* ===== Nav simulada ===== */
+  nav.app{
+    background:var(--graphite-900); border-bottom:1px solid var(--graphite-800);
+    position:sticky; top:0; z-index:50;
+  }
+  .nav-inner{ max-width:1200px; margin:0 auto; padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand .logo{
+    width:36px; height:36px; border-radius:12px; background:var(--tuscan-500);
+    display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--graphite-950); font-size:13px;
+    box-shadow:0 4px 12px rgba(247,183,8,.35);
+  }
+  .brand .name{ font-size:20px; font-weight:800; color:var(--tuscan-400); }
+  .nav-links{ display:flex; gap:4px; align-items:center; }
+  .nav-links a{
+    padding:7px 13px; border-radius:10px; font-size:13.5px; font-weight:600; text-decoration:none;
+    color:var(--graphite-400); cursor:pointer; position:relative; transition:.15s;
+  }
+  .nav-links a:hover{ color:var(--graphite-200); background:var(--graphite-800); }
+  .nav-links a.active{ background:var(--tuscan-500); color:var(--graphite-950); }
+  .nav-links a .new{
+    position:absolute; top:-7px; right:-6px; background:var(--red-500); color:#fff;
+    font-size:8.5px; font-weight:800; padding:1px 5px; border-radius:999px; letter-spacing:.05em;
+  }
+  .nav-user{ display:flex; align-items:center; gap:10px; }
+  .nav-user .avatar{
+    width:36px; height:36px; border-radius:50%; background:var(--graphite-700);
+    border:2px solid var(--graphite-700); display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:var(--graphite-200);
+  }
+  .nav-user .who{ font-size:13px; color:var(--graphite-100); font-weight:600; }
+  .nav-user .role{ font-size:11px; color:var(--tuscan-500); }
+
+  /* ===== Layout ===== */
+  main{ max-width:1200px; margin:0 auto; padding:28px 20px 80px; }
+  .screen{ display:none; }
+  .screen.visible{ display:block; animation:fade .25s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:22px; }
+  .page-head h1{ font-size:24px; font-weight:800; color:var(--graphite-50); }
+  .page-head .sub{ font-size:13px; color:var(--graphite-400); margin-top:4px; }
+  .badge-phase{
+    display:inline-block; background:rgba(0,81,255,.15); border:1px solid rgba(0,81,255,.4);
+    color:var(--blue-300); font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; margin-left:10px;
+    vertical-align:middle;
+  }
+
+  /* ===== Botones ===== */
+  .btn{
+    display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border-radius:12px;
+    font-size:13px; font-weight:700; cursor:pointer; border:1px solid transparent; transition:.15s;
+  }
+  .btn-primary{ background:var(--tuscan-500); color:var(--graphite-950); }
+  .btn-primary:hover{ background:var(--tuscan-400); }
+  .btn-blue{ background:var(--blue-500); color:#fff; }
+  .btn-blue:hover{ background:var(--blue-400); }
+  .btn-ghost{ background:var(--graphite-800); color:var(--graphite-200); border-color:var(--graphite-700); }
+  .btn-ghost:hover{ background:var(--graphite-700); }
+  .btn-danger{ background:rgba(224,31,95,.12); color:var(--red-400); border-color:rgba(224,31,95,.35); }
+
+  /* ===== Selectores / filtros ===== */
+  .filters{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:20px; }
+  .select{
+    background:var(--graphite-800); border:1px solid var(--graphite-700); color:var(--graphite-200);
+    padding:9px 14px; border-radius:12px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .select .caret{ color:var(--graphite-500); margin-left:8px; }
+  .chip-filter{
+    background:rgba(0,81,255,.18); border:1px solid var(--blue-500); color:var(--blue-300);
+    font-size:12px; font-weight:700; padding:6px 12px; border-radius:999px; display:inline-flex; gap:8px; align-items:center;
+  }
+  .chip-filter span{ cursor:pointer; opacity:.8; }
+
+  /* ===== Cards / KPI ===== */
+  .card{
+    background:var(--graphite-900); border:1px solid var(--graphite-800); border-radius:18px; padding:22px;
+  }
+  .card h2{ font-size:15px; font-weight:800; color:var(--graphite-100); margin-bottom:4px; }
+  .card .hint{ font-size:12px; color:var(--graphite-500); }
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:22px; }
+  .kpi{ background:var(--graphite-900); border:1px solid var(--graphite-800); border-radius:16px; padding:16px 18px; position:relative; overflow:hidden; }
+  .kpi::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--kpi-color, var(--tuscan-500)); }
+  .kpi .label{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--graphite-500); }
+  .kpi .value{ font-size:26px; font-weight:800; color:var(--graphite-50); margin-top:6px; }
+  .kpi .value small{ font-size:14px; color:var(--graphite-400); font-weight:700; }
+  .kpi .foot{ font-size:11.5px; color:var(--graphite-400); margin-top:4px; }
+  .kpi .foot.up{ color:var(--green-500); } .kpi .foot.down{ color:var(--red-400); }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:22px; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:22px; }
+  @media (max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
+
+  /* ===== Barras CSS ===== */
+  .bar-row{ display:grid; grid-template-columns:190px 1fr 74px; gap:12px; align-items:center; margin-bottom:14px; }
+  .bar-row .bl{ font-size:12.5px; color:var(--graphite-300); }
+  .bar-track{ height:26px; background:var(--graphite-800); border-radius:8px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:8px; display:flex; align-items:center; padding-left:10px; font-size:11px; font-weight:800; color:var(--graphite-950); }
+  .bar-val{ font-size:12.5px; font-weight:800; color:var(--graphite-100); text-align:right; }
+
+  /* Donut */
+  .donut-wrap{ display:flex; gap:22px; align-items:center; }
+  .donut{
+    width:150px; height:150px; border-radius:50%; flex-shrink:0;
+    background:conic-gradient(var(--blue-500) 0 84.6%, var(--tuscan-500) 84.6% 100%);
+    position:relative;
+  }
+  .donut::after{
+    content:"27"; position:absolute; inset:22px; background:var(--graphite-900); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; color:var(--graphite-50);
+  }
+  .legend{ display:flex; flex-direction:column; gap:10px; }
+  .legend .li{ display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--graphite-300); }
+  .legend .dot{ width:11px; height:11px; border-radius:3px; }
+  .legend b{ color:var(--graphite-100); }
+
+  /* ===== Tablas ===== */
+  .table-wrap{ overflow-x:auto; border:1px solid var(--graphite-800); border-radius:14px; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  thead th{
+    background:var(--graphite-800); color:var(--graphite-400); font-size:11px; font-weight:800;
+    text-transform:uppercase; letter-spacing:.05em; text-align:left; padding:12px 14px; white-space:nowrap;
+    position:sticky; top:0;
+  }
+  thead th.sortable{ cursor:pointer; } thead th.sortable:hover{ color:var(--tuscan-400); }
+  tbody td{ padding:12px 14px; border-top:1px solid var(--graphite-800); color:var(--graphite-300); white-space:nowrap; }
+  tbody tr:hover{ background:rgba(54,48,50,.45); }
+  td.num{ text-align:right; font-weight:700; color:var(--graphite-100); }
+  .muted{ color:var(--graphite-500); }
+
+  /* ===== Badges ===== */
+  .b{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; }
+  .b-yellow{ background:rgba(247,183,8,.14); color:var(--tuscan-400); }
+  .b-green{ background:rgba(61,220,132,.13); color:var(--green-500); }
+  .b-red{ background:rgba(224,31,95,.14); color:var(--red-400); }
+  .b-blue{ background:rgba(0,81,255,.16); color:var(--blue-300); }
+  .b-ash{ background:rgba(133,173,167,.14); color:var(--ash-400); }
+  .b-gray{ background:var(--graphite-800); color:var(--graphite-300); }
+  .b .bdot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  /* ===== Backlog list ===== */
+  .backlog-item{
+    display:flex; align-items:center; gap:14px; padding:14px 16px; border:1px solid var(--graphite-800);
+    border-radius:14px; margin-bottom:10px; background:var(--graphite-900);
+    border-left:4px solid var(--red-500);
+  }
+  .backlog-item.warn{ border-left-color:var(--tuscan-500); }
+  .backlog-item.info{ border-left-color:var(--ash-500); }
+  .backlog-item .veh{ font-weight:800; color:var(--graphite-100); font-size:13.5px; min-width:230px; }
+  .backlog-item .mot{ font-size:12.5px; color:var(--graphite-400); flex:1; }
+  .backlog-item .days{ font-size:12px; font-weight:800; color:var(--red-400); }
+
+  /* ===== Conclusiones ===== */
+  .concl{ background:var(--graphite-950); border:1px dashed var(--graphite-700); border-radius:14px; padding:20px; }
+  .concl .auto-tag{
+    display:inline-flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800; color:var(--blue-300);
+    background:rgba(0,81,255,.14); border:1px solid rgba(0,81,255,.4); padding:3px 10px; border-radius:999px; margin-bottom:12px;
+    letter-spacing:.05em;
+  }
+  .concl h4{ font-size:13px; font-weight:800; color:var(--tuscan-400); margin:14px 0 6px; }
+  .concl p{ font-size:13px; color:var(--graphite-300); margin-bottom:8px; }
+  .concl p b{ color:var(--graphite-100); }
+
+  /* ===== Kardex ===== */
+  .item-pills{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+  .pill{
+    background:var(--graphite-800); border:1px solid var(--graphite-700); color:var(--graphite-300);
+    padding:9px 16px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer; transition:.15s;
+  }
+  .pill:hover{ border-color:var(--graphite-600); color:var(--graphite-100); }
+  .pill.active{ background:var(--tuscan-500); border-color:var(--tuscan-500); color:var(--graphite-950); }
+  .pill .stock{ font-size:11px; font-weight:800; margin-left:7px; opacity:.85; }
+  .pill .stock.low{ color:var(--red-400); } .pill .stock.low.on{ color:var(--red-600); }
+
+  .alert{
+    display:flex; gap:12px; align-items:center; padding:13px 16px; border-radius:14px; margin-bottom:18px;
+    font-size:13px; font-weight:600;
+  }
+  .alert-red{ background:rgba(224,31,95,.1); border:1px solid rgba(224,31,95,.4); color:var(--red-400); }
+  .alert-yellow{ background:rgba(247,183,8,.08); border:1px solid rgba(247,183,8,.35); color:var(--tuscan-300); }
+  .alert .ic{ width:22px; height:22px; border-radius:50%; background:currentColor; flex-shrink:0; position:relative; }
+  .alert .ic::after{ content:"!"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--graphite-950); font-weight:900; font-size:13px; }
+
+  .stock-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-bottom:22px; }
+  .stock-card{ background:var(--graphite-900); border:1px solid var(--graphite-800); border-radius:16px; padding:16px; }
+  .stock-card .nm{ font-size:13px; font-weight:800; color:var(--graphite-100); }
+  .stock-card .ex{ font-size:24px; font-weight:800; color:var(--graphite-50); margin:6px 0 2px; }
+  .stock-card .ex small{ font-size:13px; color:var(--graphite-400); }
+  .stock-card .min{ font-size:11.5px; color:var(--graphite-500); }
+  .prog{ height:7px; background:var(--graphite-800); border-radius:999px; margin-top:10px; overflow:hidden; }
+  .prog i{ display:block; height:100%; border-radius:999px; }
+
+  .balance-eq{
+    display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;
+    background:var(--graphite-950); border:1px solid var(--graphite-800); border-radius:16px; padding:18px;
+    font-size:14px; color:var(--graphite-300);
+  }
+  .balance-eq .v{ font-weight:800; color:var(--graphite-50); font-size:17px; }
+  .balance-eq .op{ color:var(--graphite-600); font-size:18px; font-weight:800; }
+  .balance-eq .res{ color:var(--tuscan-400); font-size:21px; font-weight:800; }
+
+  /* ===== Notas de implementacion ===== */
+  .impl-note{
+    background:linear-gradient(180deg, rgba(0,81,255,.07), rgba(0,81,255,.03));
+    border:1px solid rgba(0,81,255,.35); border-radius:18px; padding:22px; margin-top:26px;
+  }
+  .impl-note h3{ font-size:14px; font-weight:800; color:var(--blue-300); margin-bottom:14px; display:flex; align-items:center; gap:9px; }
+  .impl-note h3 .sq{ width:9px; height:9px; background:var(--blue-500); border-radius:3px; }
+  .impl-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
+  .impl-col h5{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--graphite-500); margin-bottom:9px; }
+  .impl-col li{ list-style:none; font-size:12.5px; color:var(--graphite-300); padding:5px 0 5px 16px; position:relative; }
+  .impl-col li::before{ content:""; position:absolute; left:0; top:11px; width:6px; height:6px; border-radius:2px; background:var(--tuscan-500); }
+  .impl-col li code{ background:var(--graphite-950); color:var(--tuscan-300); padding:1px 7px; border-radius:6px; font-size:11.5px; border:1px solid var(--graphite-800); }
+  .impl-col li .newf{ color:var(--red-400); font-weight:700; }
+
+  /* ===== Mapa final ===== */
+  .route-map{ width:100%; }
+  .route-map td:first-child code{ color:var(--tuscan-300); background:var(--graphite-950); padding:2px 9px; border-radius:7px; border:1px solid var(--graphite-800); font-size:12.5px; }
+
+  footer{ border-top:1px solid var(--graphite-800); padding:22px; text-align:center; font-size:12px; color:var(--graphite-500); }
+</style>
+</head>
+<body>
+
+<!-- ================= BANNER MOCKUP ================= -->
+<div class="mock-banner">
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+    <span class="tag">MOCKUP UX · NO ES LA APP REAL</span>
+    <p>Prototipo visual de los <b>3 modulos propuestos</b> para JosTools · cambia de pantalla con los botones o con la navegacion</p>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button class="btn btn-ghost" onclick="show('informe')">1 · Informe mensual</button>
+    <button class="btn btn-ghost" onclick="show('combustible')">2 · Combustible</button>
+    <button class="btn btn-ghost" onclick="show('inventario')">3 · Inventario</button>
+    <button class="btn btn-blue" onclick="show('mapa')">Vista global</button>
+  </div>
+</div>
+
+<!-- ================= NAV SIMULADA ================= -->
+<nav class="app">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="logo">JT</div>
+      <span class="name">JosTools</span>
+      <div class="nav-links" style="margin-left:18px;">
+        <a onclick="show('informe')" id="tab-informe">Informe mensual<span class="new">NUEVO</span></a>
+        <a onclick="show('combustible')" id="tab-combustible">Combustible<span class="new">NUEVO</span></a>
+        <a onclick="show('inventario')" id="tab-inventario">Inventario<span class="new">NUEVO</span></a>
+        <a class="muted" title="ya existente">Dashboard</a>
+        <a class="muted" title="ya existente">Registros</a>
+      </div>
+    </div>
+    <div class="nav-user">
+      <div style="text-align:right;">
+        <div class="who">Jesus Romero</div>
+        <div class="role">MOPARCA · Dueño</div>
+      </div>
+      <div class="avatar">JR</div>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- =============================================================== -->
+<!-- SCREEN 1: INFORME MENSUAL                                       -->
+<!-- =============================================================== -->
+<section class="screen visible" id="scr-informe">
+
+  <div class="page-head">
+    <div>
+      <h1>Informe mensual de mantenimiento <span class="badge-phase">FASE 1 · /reports</span></h1>
+      <div class="sub">Se genera automaticamente desde los eventos del mes · sin editar nada a mano</div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div class="select">Mes: Septiembre 2026 <span class="caret">&#9662;</span></div>
+      <button class="btn btn-blue">Exportar PDF</button>
+      <button class="btn btn-ghost">Exportar Excel</button>
+    </div>
+  </div>
+
+  <!-- KPIs del informe -->
+  <div class="kpis">
+    <div class="kpi" style="--kpi-color:var(--blue-500);">
+      <div class="label">Intervenciones</div>
+      <div class="value">27</div>
+      <div class="foot">19 correctivos + 4 preventivos + 4 otros</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--red-500);">
+      <div class="label">Correctivos</div>
+      <div class="value">84.6<small>%</small></div>
+      <div class="foot down">22 fallas imprevistas — alerta</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--tuscan-500);">
+      <div class="label">Preventivos</div>
+      <div class="value">15.4<small>%</small></div>
+      <div class="foot">4 eventos — meta: 40-50%</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--ash-500);">
+      <div class="label">Eficiencia de cierre</div>
+      <div class="value">81.5<small>%</small></div>
+      <div class="foot up">22 de 27 completados en el mes</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--red-500);">
+      <div class="label">Backlog administrativo</div>
+      <div class="value">22.7<small>%</small></div>
+      <div class="foot down">5 unidades frenadas (no tecnico)</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--blue-400);">
+      <div class="label">Costo de reparaciones</div>
+      <div class="value">$18,450</div>
+      <div class="foot">suma de repair_cost del mes</div>
+    </div>
+  </div>
+
+  <!-- Graficas -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>Distribucion por tipo de flota</h2>
+      <div class="hint">Nuevo campo <b style="color:var(--tuscan-300)">fleet_group</b> en el vehiculo · agrupa por prefijo</div>
+      <div style="margin-top:18px;">
+        <div class="bar-row">
+          <div class="bl">Carga pesada (VP, EP, VB, VC)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:59.3%; background:var(--blue-500);">59.3%</div></div>
+          <div class="bar-val">16 unid.</div>
+        </div>
+        <div class="bar-row">
+          <div class="bl">Maquinaria (MQ)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:25.9%; background:var(--tuscan-500);">25.9%</div></div>
+          <div class="bar-val">7 unid.</div>
+        </div>
+        <div class="bar-row">
+          <div class="bl">Livianos (VL, TP)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:14.8%; background:var(--ash-400); color:var(--graphite-950);">14.8%</div></div>
+          <div class="bar-val">4 unid.</div>
+        </div>
+      </div>
+      <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--graphite-800); font-size:12.5px; color:var(--graphite-400);">
+        Conclusion tecnica: el mayor desgaste se concentra en carga pesada, <b style="color:var(--tuscan-300)">casi el 60% de la carga del taller</b>.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Mix de intervenciones y sistemas afectados</h2>
+      <div class="hint">Ya existe <b style="color:var(--tuscan-300)">event_type</b> y <b style="color:var(--tuscan-300)">system_affected</b> — solo se grafica</div>
+      <div class="donut-wrap" style="margin-top:16px;">
+        <div class="donut"></div>
+        <div class="legend">
+          <div class="li"><span class="dot" style="background:var(--blue-500);"></span> Correctivos <b>22 (84.6%)</b></div>
+          <div class="li"><span class="dot" style="background:var(--tuscan-500);"></span> Preventivos <b>4 (15.4%)</b></div>
+          <div class="li" style="margin-top:6px; border-top:1px solid var(--graphite-800); padding-top:10px;">
+            Top sistemas: Frenos/embrague <b>7</b> · Inyeccion <b>4</b> · Hidraulico <b>3</b> · Electrico <b>2</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backlog -->
+  <div class="card" style="margin-bottom:22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h2>Backlog administrativo — 5 equipos frenados</h2>
+        <div class="hint">Nuevo campo <b style="color:var(--red-400)">block_reason</b> en el evento (cambia el estado a "Bloqueado")</div>
+      </div>
+      <span class="b b-red"><span class="bdot"></span>22.7% de las unidades en taller</span>
+    </div>
+    <div style="margin-top:16px;">
+      <div class="backlog-item">
+        <div class="veh">Mack Vision (VP 6-004)</div>
+        <div class="mot">Reparado — <b>Falta repuesto:</b> tapas del eje muerto</div>
+        <span class="b b-red"><span class="bdot"></span>Falta repuesto</span>
+        <div class="days">6 dias</div>
+      </div>
+      <div class="backlog-item">
+        <div class="veh">Van Fiat (TP 11-001)</div>
+        <div class="mot">Reparado — <b>Falta repuesto:</b> completar valvulina</div>
+        <span class="b b-red"><span class="bdot"></span>Falta repuesto</span>
+        <div class="days">4 dias</div>
+      </div>
+      <div class="backlog-item warn">
+        <div class="veh">Iveco Daily (VP 4-002)</div>
+        <div class="mot">Reactivacion detenida — <b>Pago pendiente:</b> trabajos en fibra</div>
+        <span class="b b-yellow"><span class="bdot"></span>Pago pendiente</span>
+        <div class="days">9 dias</div>
+      </div>
+      <div class="backlog-item warn">
+        <div class="veh">Cargo 815 Bacheo Rojo (VB 10-002)</div>
+        <div class="mot">En espera — <b>Falta repuesto:</b> bombines</div>
+        <span class="b b-yellow"><span class="bdot"></span>Falta repuesto</span>
+        <div class="days">3 dias</div>
+      </div>
+      <div class="backlog-item info">
+        <div class="veh">Super Duty Giovanny (VP 3-002)</div>
+        <div class="mot">En taller — <b>Sin disponibilidad del usuario</b></div>
+        <span class="b b-ash"><span class="bdot"></span>Disponibilidad</span>
+        <div class="days">2 dias</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista de intervenciones + conclusiones -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>Intervenciones del mes</h2>
+      <div class="hint">Tabla generada desde <b style="color:var(--tuscan-300)">/records</b> con observaciones nuevas</div>
+      <div class="table-wrap" style="margin-top:14px;">
+        <table>
+          <thead><tr><th>Equipo</th><th>Tipo</th><th>Sistema</th><th>Observacion / pendiente</th></tr></thead>
+          <tbody>
+            <tr><td>Mack Vision VP 6-004</td><td><span class="b b-red">Correctivo</span></td><td>Suspension</td><td class="muted">Faltan tapas eje muerto</td></tr>
+            <tr><td>Van Fiat TP 11-001</td><td><span class="b b-red">Correctivo</span></td><td>Embrague</td><td class="muted">Pendiente valvulina</td></tr>
+            <tr><td>Volqueta EP 21-005</td><td><span class="b b-red">Correctivo</span></td><td>Frenos</td><td class="muted">—</td></tr>
+            <tr><td>Payloader 928 MQ 23-018</td><td><span class="b b-blue">Preventivo</span></td><td>General</td><td class="muted">Rutina completada</td></tr>
+            <tr><td>Cargo 815 VP 4-001</td><td><span class="b b-blue">Preventivo</span></td><td>General</td><td class="muted">Rutina completada</td></tr>
+            <tr><td>Vibrocompactador MQ 23-014</td><td><span class="b b-red">Correctivo</span></td><td>Combustible</td><td class="muted">Purga realizada</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="hint" style="margin-top:8px;">+19 filas mas · click en fila = detalle del evento (como hoy en /reports)</div>
+    </div>
+
+    <div class="card">
+      <h2>Conclusiones y recomendaciones</h2>
+      <div class="hint">Texto redactado automaticamente con los numeros reales del mes</div>
+      <div class="concl" style="margin-top:14px;">
+        <span class="auto-tag">GENERADO POR EL SISTEMA — editable antes de exportar</span>
+        <h4>Conclusiones</h4>
+        <p><b>Predominio del correctivo:</b> el 84.6% de las intervenciones fueron fallas imprevistas, evidenciando alta reactividad frente a las rutinas programadas.</p>
+        <p><b>Alta carga en sistemas mecanicos:</b> el 87% de las fallas se concentro en embragues, frenos, inyeccion y sistemas hidraulicos.</p>
+        <p><b>Cuellos de botella:</b> 5 equipos permanecen inactivos por insumos menores o aprobaciones financieras pendientes.</p>
+        <h4>Recomendaciones</h4>
+        <p>Elevar los preventivos al <b>40-50%</b> del total · stock minimo de repuestos de alta rotacion · priorizar cierres financieros para reincorporar equipos.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Implementacion -->
+  <div class="impl-note">
+    <h3><span class="sq"></span>Como se implementa en el sistema</h3>
+    <div class="impl-grid">
+      <div class="impl-col">
+        <h5>Ruta nueva</h5>
+        <ul>
+          <li><code>/reports</code> — pagina con AuthGuard</li>
+          <li>Selector de mes + export (ya existente)</li>
+          <li>Navbar: link "Informe mensual"</li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Datos que ya se reutilizan</h5>
+        <ul>
+          <li><code>maintenance_events</code> (27 eventos del mes)</li>
+          <li><code>event_type</code>, <code>system_affected</code></li>
+          <li><code>calculateIndicators()</code> + filtros</li>
+          <li>Export <code>jspdf + autotable</code> (pdfExportService)</li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Campos nuevos (fase corta)</h5>
+        <ul>
+          <li>Vehiculo: <code>fleet_group</code> <span class="newf">NUEVO</span></li>
+          <li>Evento: <code>observation</code> <span class="newf">NUEVO</span></li>
+          <li>Evento: <code>block_reason</code> <span class="newf">NUEVO</span></li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Logica</h5>
+        <ul>
+          <li>Query por rango de fechas del mes</li>
+          <li>Conteos: mix, flota, sistemas, backlog</li>
+          <li>Eficiencia = cerrados / en ciclo x 100</li>
+          <li>Plantilla de conclusiones con placeholders</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================================================== -->
+<!-- SCREEN 2: COMBUSTIBLE                                            -->
+<!-- =============================================================== -->
+<section class="screen" id="scr-combustible">
+
+  <div class="page-head">
+    <div>
+      <h1>Control de gasoil <span class="badge-phase">FASE 2 · /combustible</span></h1>
+      <div class="sub">Kardex de entradas y salidas — reemplaza el Excel CONTROL DE GASOIL (CAM-FR-AD-002)</div>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn btn-primary">+ Nuevo movimiento</button>
+      <button class="btn btn-ghost">Cierre del mes</button>
+      <button class="btn btn-ghost">Exportar Excel</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="select">Mes: Septiembre 2026 <span class="caret">&#9662;</span></div>
+    <div class="select">Categoria: Todas <span class="caret">&#9662;</span></div>
+    <div class="select">Vehiculo: Todos <span class="caret">&#9662;</span></div>
+    <span class="chip-filter">obra: PATIO <span>&times;</span></span>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi" style="--kpi-color:var(--tuscan-500);">
+      <div class="label">Existencia actual</div>
+      <div class="value">24,470 <small>L</small></div>
+      <div class="foot">balance recalculado en tiempo real</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--green-500);">
+      <div class="label">Ingresos del mes</div>
+      <div class="value">17,432 <small>L</small></div>
+      <div class="foot up">2 compras (PDVSA + camion servicio)</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--red-500);">
+      <div class="label">Consumo del mes</div>
+      <div class="value">23,946 <small>L</small></div>
+      <div class="foot down">37 egresos</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--blue-500);">
+      <div class="label">Litros por dia</div>
+      <div class="value">798 <small>L/dia</small></div>
+      <div class="foot">promedio del mes</div>
+    </div>
+  </div>
+
+  <!-- Cierre automatico -->
+  <div class="card" style="margin-bottom:22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div>
+        <h2>Cierre automatico 01/09 — 30/09</h2>
+        <div class="hint">Lo que hoy se suma a mano en 5 hojas de Excel — un solo boton</div>
+      </div>
+      <span class="b b-green"><span class="bdot"></span>Cuadrado</span>
+    </div>
+    <div class="grid-3" style="margin:16px 0 0;">
+      <div class="kpi" style="--kpi-color:var(--ash-400);"><div class="label">Interno (flota/obra)</div><div class="value" style="font-size:20px;">5,560 <small>L</small></div></div>
+      <div class="kpi" style="--kpi-color:var(--tuscan-500);"><div class="label">Despacho planta</div><div class="value" style="font-size:20px;">2,513 <small>L</small></div></div>
+      <div class="kpi" style="--kpi-color:var(--red-500);"><div class="label">Terceros (ZU-Concreto)</div><div class="value" style="font-size:20px;">14,385 <small>L</small></div></div>
+      <div class="kpi" style="--kpi-color:var(--blue-500);"><div class="label">Sindicato</div><div class="value" style="font-size:20px;">1,488 <small>L</small></div></div>
+      <div class="kpi" style="--kpi-color:var(--green-500);"><div class="label">Ingresos (compras)</div><div class="value" style="font-size:20px;">17,432 <small>L</small></div></div>
+      <div class="kpi" style="--kpi-color:var(--graphite-600);"><div class="label">Existencia previa</div><div class="value" style="font-size:20px;">21,341 <small>L</small></div></div>
+    </div>
+    <div class="balance-eq" style="margin-top:16px;">
+      <span>21,341</span><span class="op">+</span><span class="v">17,432</span>
+      <span class="op">&minus;</span><span class="v">23,946</span><span class="op">=</span>
+      <span class="res">14,827 L</span>
+      <span class="muted" style="font-size:12.5px;">existencia al cierre</span>
+    </div>
+  </div>
+
+  <!-- Tabla de movimientos -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+      <div>
+        <h2>Movimientos</h2>
+        <div class="hint">Tabla ordenable con busqueda — click en fila para editar mientras el mes este abierto</div>
+      </div>
+      <span class="b b-gray">37 movimientos</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable">Fecha &#8597;</th><th>Movimiento</th><th>Categoria</th>
+            <th class="sortable">Vehiculo / Destino &#8597;</th><th>Obra</th>
+            <th class="sortable" style="text-align:right;">Litros &#8597;</th><th>Soporte</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>01/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Egreso</span></td><td><span class="b b-gray">Interno</span></td><td style="color:var(--graphite-100); font-weight:600;">CARGO 815 TRANSPORTE</td><td class="muted">PATIO</td><td class="num">122</td><td class="muted">11090461</td></tr>
+          <tr><td>01/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Egreso</span></td><td><span class="b b-gray">Interno</span></td><td style="color:var(--graphite-100); font-weight:600;">VISION (VP 6-004)</td><td class="muted">PATIO</td><td class="num">400</td><td class="muted">11093624</td></tr>
+          <tr><td>03/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Egreso</span></td><td><span class="b b-gray">Interno</span></td><td style="color:var(--graphite-100); font-weight:600;">CISTERNA</td><td class="muted">PATIO</td><td class="num">252</td><td class="muted">11094117</td></tr>
+          <tr><td>09/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Egreso</span></td><td><span class="b b-ash">Interno</span></td><td style="color:var(--graphite-100); font-weight:600;">CARGADOR 928G (MQ 23-018)</td><td class="muted">PATIO</td><td class="num">82</td><td class="muted">11103038</td></tr>
+          <tr><td>10/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Egreso</span></td><td><span class="b b-yellow">Planta</span></td><td style="color:var(--graphite-100); font-weight:600;">Despacho asfalto (373.6 ton &times; 1.5)</td><td class="muted">CAMELOT</td><td class="num">560</td><td class="muted">—</td></tr>
+          <tr><td>29/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Egreso</span></td><td><span class="b b-blue">Sindicato</span></td><td style="color:var(--graphite-100); font-weight:600;">Chofer: Douglas Parra · placa A82CC4M</td><td class="muted">S/O</td><td class="num">236</td><td class="muted">1922</td></tr>
+          <tr><td>04/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Egreso</span></td><td><span class="b b-red">Terceros</span></td><td style="color:var(--graphite-100); font-weight:600;">Placa 01KWAB (ZU-Concreto)</td><td class="muted">—</td><td class="num">453</td><td class="muted">11094792</td></tr>
+          <tr><td>28/09/2026</td><td><span class="b b-green"><span class="bdot"></span>Ingreso</span></td><td><span class="b b-green">Compra</span></td><td style="color:var(--graphite-100); font-weight:600;">Camion de servicio</td><td class="muted">PROPIA</td><td class="num">1,500</td><td class="muted">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="hint" style="margin-top:8px;">+29 movimientos mas · movimientos en verde = ingresos/compras</div>
+  </div>
+
+  <div class="impl-note">
+    <h3><span class="sq"></span>Como se implementa en el sistema</h3>
+    <div class="impl-grid">
+      <div class="impl-col">
+        <h5>Ruta nueva</h5>
+        <ul>
+          <li><code>/combustible</code> — pagina con AuthGuard</li>
+          <li>Modal "Nuevo movimiento" (patron de MaintenanceForm)</li>
+          <li>Navbar: link "Combustible"</li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Coleccion nueva</h5>
+        <ul>
+          <li><code>fuel_movements</code> <span class="newf">NUEVA</span></li>
+          <li>fecha, tipo (entrada/salida), categoria</li>
+          <li>vehicle_id, obra, litros, soporte</li>
+          <li>toneladas + t_l (planta: litros = ton &times; T/L)</li>
+          <li>enterprise_id (reglas multi-empresa)</li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Reutiliza</h5>
+        <ul>
+          <li>Catalogo <code>vehicles</code> (mismas matriculas)</li>
+          <li>Usuario de Auth = quien reporta</li>
+          <li>Filtros de mes/vehiculo de /records</li>
+          <li>Exportador Excel (sheetjs + jspdf)</li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Logica</h5>
+        <ul>
+          <li>Existencia = suma(ingresos) &minus; suma(egresos) + previo</li>
+          <li>Cierre mensual: totales por categoria</li>
+          <li>Fase 4: importador de Excel historico</li>
+          <li>Fase 4: alerta de stock bajo</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================================================== -->
+<!-- SCREEN 3: INVENTARIO / LUBRICANTES                               -->
+<!-- =============================================================== -->
+<section class="screen" id="scr-inventario">
+
+  <div class="page-head">
+    <div>
+      <h1>Kardex de lubricantes y repuestos <span class="badge-phase">FASE 3 · /inventario</span></h1>
+      <div class="sub">Saldo corrido automatico — reemplaza CAM-FR-AD-012 (Relacion de consumo de lubricante)</div>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn btn-primary">+ Nuevo movimiento</button>
+      <button class="btn btn-ghost">Exportar Excel</button>
+    </div>
+  </div>
+
+  <!-- Alertas -->
+  <div class="alert alert-red">
+    <span class="ic"></span>
+    <span><b>SAE 50:</b> existencia en 0 — alcanzo el stock minimo (20 L). Provee con ENVISERCA antes del proximo ingreso a taller.</span>
+  </div>
+  <div class="alert alert-yellow">
+    <span class="ic"></span>
+    <span><b>Grasa Lithium 15 KG:</b> quedan 15 kg — bajo el stock minimo (25 kg).</span>
+  </div>
+
+  <!-- Pastillas por item -->
+  <div class="item-pills">
+    <div class="pill active">15W-40 <span class="stock">53 L</span></div>
+    <div class="pill">SAE 50 <span class="stock low">0 L</span></div>
+    <div class="pill">GEAR 85W-140 <span class="stock">46 L</span></div>
+    <div class="pill">Grasa Lithium 15 KG <span class="stock low">15 kg</span></div>
+  </div>
+
+  <!-- Stock cards -->
+  <div class="stock-cards">
+    <div class="stock-card">
+      <div class="nm">Aceite motor 15W-40</div>
+      <div class="ex">53 <small>L</small></div>
+      <div class="min">stock minimo: 30 L</div>
+      <div class="prog"><i style="width:76%; background:var(--green-500);"></i></div>
+    </div>
+    <div class="stock-card" style="border-color:rgba(224,31,95,.5);">
+      <div class="nm" style="color:var(--red-400);">Aceite SAE 50</div>
+      <div class="ex" style="color:var(--red-400);">0 <small>L</small></div>
+      <div class="min">stock minimo: 20 L</div>
+      <div class="prog"><i style="width:4%; background:var(--red-500);"></i></div>
+    </div>
+    <div class="stock-card">
+      <div class="nm">Transmision GEAR 85W-140</div>
+      <div class="ex">46 <small>L</small></div>
+      <div class="min">stock minimo: 25 L</div>
+      <div class="prog"><i style="width:62%; background:var(--green-500);"></i></div>
+    </div>
+    <div class="stock-card" style="border-color:rgba(247,183,8,.45);">
+      <div class="nm" style="color:var(--tuscan-300);">Grasa Lithium 15 KG</div>
+      <div class="ex" style="color:var(--tuscan-300);">15 <small>kg</small></div>
+      <div class="min">stock minimo: 25 kg</div>
+      <div class="prog"><i style="width:38%; background:var(--tuscan-500);"></i></div>
+    </div>
+  </div>
+
+  <!-- Kardex -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+      <div>
+        <h2>Kardex — Aceite motor 15W-40</h2>
+        <div class="hint">Saldo corrido calculado: <b style="color:var(--tuscan-300)">saldo(n) = saldo(n-1) + entrada &minus; salida</b> (como la formula del Excel, pero automatica)</div>
+      </div>
+      <span class="b b-ash"><span class="bdot"></span>Jul - Oct 2026</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable">Fecha &#8597;</th><th>Movimiento</th><th>Proveedor / Solicitante</th>
+            <th>Equipo</th><th style="text-align:right;">Cantidad</th><th>Nota</th>
+            <th style="text-align:right;">Existencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>28/07/2026</td><td><span class="b b-green"><span class="bdot"></span>Entrada</span></td><td style="color:var(--graphite-100);">ENVISERCA</td><td class="muted">—</td><td class="num">+228 L</td><td class="muted">N-IRT-005</td><td class="num">192 L</td></tr>
+          <tr><td>28/07/2026</td><td><span class="b b-red"><span class="bdot"></span>Salida</span></td><td style="color:var(--graphite-100);">Obra</td><td class="muted">Maquinarias</td><td class="num">&minus;36 L</td><td class="muted">N-IRT-005</td><td class="num">156 L</td></tr>
+          <tr><td>31/07/2026</td><td><span class="b b-red"><span class="bdot"></span>Salida</span></td><td style="color:var(--graphite-100);">Taller</td><td style="color:var(--graphite-100);">TAMPO PS-150C</td><td class="num">&minus;4 L</td><td class="muted">—</td><td class="num">134 L</td></tr>
+          <tr><td>20/08/2026</td><td><span class="b b-green"><span class="bdot"></span>Entrada</span></td><td style="color:var(--graphite-100);">ENVISERCA</td><td class="muted">—</td><td class="num">+95 L</td><td class="muted">—</td><td class="num">148 L</td></tr>
+          <tr><td>20/08/2026</td><td><span class="b b-red"><span class="bdot"></span>Salida</span></td><td style="color:var(--graphite-100);">Taller</td><td style="color:var(--graphite-100);">VC 8-001 Camion Cesta</td><td class="num">&minus;7 L</td><td class="muted">—</td><td class="num">141 L</td></tr>
+          <tr><td>04/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Salida</span></td><td style="color:var(--graphite-100);">Taller</td><td style="color:var(--graphite-100);">RETRO 420D (MQ 23-002)</td><td class="num">&minus;2 L</td><td class="muted">—</td><td class="num">59 L</td></tr>
+          <tr><td>18/09/2026</td><td><span class="b b-green"><span class="bdot"></span>Entrada</span></td><td style="color:var(--graphite-100);">ENVISERCA</td><td class="muted">—</td><td class="num">+114 L</td><td class="muted">—</td><td class="num">131 L</td></tr>
+          <tr><td>30/09/2026</td><td><span class="b b-red"><span class="bdot"></span>Salida</span></td><td style="color:var(--graphite-100);">Taller</td><td style="color:var(--graphite-100);">CARGADOR 928G (MQ 23-018)</td><td class="num">&minus;5 L</td><td class="muted">—</td><td class="num" style="color:var(--tuscan-400);">55 L</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="hint" style="margin-top:8px;">La columna Existencia se recalcula sola en cada movimiento (fin de las formulas arrastradas a mano)</div>
+  </div>
+
+  <div class="impl-note">
+    <h3><span class="sq"></span>Como se implementa en el sistema</h3>
+    <div class="impl-grid">
+      <div class="impl-col">
+        <h5>Ruta nueva</h5>
+        <ul>
+          <li><code>/inventario</code> — pagina con AuthGuard</li>
+          <li>Pastillas por item + modal de movimiento</li>
+          <li>Navbar: link "Inventario"</li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Colecciones nuevas</h5>
+        <ul>
+          <li><code>stock_items</code> <span class="newf">NUEVA</span> — fluidos/repuestos, stock min</li>
+          <li><code>stock_movements</code> <span class="newf">NUEVA</span> — fecha, tipo, cantidad, equipo, nota</li>
+          <li>Equipo = referencia a <code>vehicles</code></li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Reutiliza</h5>
+        <ul>
+          <li>Todo el modulo de Combustible (fase 2) parametrizado por item</li>
+          <li>Patrones de tabla, filtros, modales y export</li>
+          <li>Reglas multi-empresa de Firestore</li>
+        </ul>
+      </div>
+      <div class="impl-col">
+        <h5>Logica</h5>
+        <ul>
+          <li>Saldo corrido al momento del registro</li>
+          <li>Alerta <span class="newf">stock &lt; minimo</span> en dashboard</li>
+          <li>Fase 4: extender a repuestos (bombines, valvulina)</li>
+          <li>Cruce: salida por equipo + evento = costo total</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================================================== -->
+<!-- MAPA FINAL DE IMPLEMENTACION                                     -->
+<!-- =============================================================== -->
+<section class="screen" id="scr-mapa" style="display:none;">
+  <div class="page-head">
+    <div>
+      <h1>Mapa de implementacion <span class="badge-phase">VISTA GLOBAL</span></h1>
+      <div class="sub">Como quedaria JosTools despues de las 4 fases</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table class="route-map">
+        <thead><tr><th>Ruta</th><th>Fase</th><th>Modulo</th><th>Colecciones</th><th>Campos nuevos</th></tr></thead>
+        <tbody>
+          <tr><td><code>/reports</code></td><td><span class="b b-blue">Fase 1</span></td><td>Informe mensual auto + export PDF/Excel</td><td>lee maintenance_events, vehicles</td><td>event.observation, event.block_reason, vehicle.fleet_group</td></tr>
+          <tr><td><code>/combustible</code></td><td><span class="b b-yellow">Fase 2</span></td><td>Kardex de gasoil + cierre mensual</td><td>fuel_movements</td><td>obra, litros, toneladas, soporte</td></tr>
+          <tr><td><code>/inventario</code></td><td><span class="b b-green">Fase 3</span></td><td>Kardex de lubricantes/repuestos + alertas</td><td>stock_items, stock_movements</td><td>stock_min</td></tr>
+          <tr><td>admin/import</td><td><span class="b b-gray">Fase 4</span></td><td>Importador Excel historico + alertas + km/L</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="impl-note" style="margin-top:20px;">
+      <h3><span class="sq"></span>Decision final</h3>
+      <div class="impl-grid">
+        <div class="impl-col">
+          <h5>Todo DENTRO de JosTools</h5>
+          <ul>
+            <li>Misma auth de Google y multi-empresa</li>
+            <li>Mismo catalogo de vehiculos (las mismas matriculas)</li>
+            <li>Mismo deploy en Vercel — cero infra nueva</li>
+          </ul>
+        </div>
+        <div class="impl-col">
+          <h5>Por que NO otra app</h5>
+          <ul>
+            <li>El informe necesita maintenance_events</li>
+            <li>Kardex referencia la misma flota</li>
+            <li>Duplicaria login, reglas, UI y hosting</li>
+          </ul>
+        </div>
+        <div class="impl-col">
+          <h5>Ganancia</h5>
+          <ul>
+            <li>Cierre mensual en 1 clic (antes: 5 hojas)</li>
+            <li>Informe en segundos (antes: dia completo)</li>
+            <li>Km/L y costo/km cruzando kardex + odometro</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Mockup UX JosTools · Fases 1-3 de la propuesta <b style="color:var(--tuscan-400);">docs/new/propuesta-para-jostools.md</b> · colores y estilos calcados de la app real (globals.css) · archivo estatico, no forma parte del build
+</footer>
+
+<script>
+  function show(name){
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('visible'); s.style.display='none'; });
+    var el = document.getElementById('scr-' + name);
+    if (el){ el.style.display='block'; el.classList.add('visible'); }
+    document.querySelectorAll('.nav-links a').forEach(function(a){ a.classList.remove('active'); });
+    var tab = document.getElementById('tab-' + name);
+    if (tab){ tab.classList.add('active'); }
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+  show('informe');
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@ import type { Enterprise } from "@/types/enterprise";
 const links = [
   { href: "/", label: "Dashboard" },
   { href: "/records", label: "Registros" },
+  { href: "/reports", label: "Informe mensual" },
   { href: "/maintenance/new", label: "Nuevo registro" },
   { href: "/help", label: "Ayuda" },
 ];

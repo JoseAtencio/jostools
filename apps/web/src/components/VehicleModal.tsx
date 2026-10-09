@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { createVehicle } from "@/lib/services/vehicleService";
 import HelpTip from "@/components/HelpTip";
+import { FLEET_GROUP_OPTIONS } from "@/types/vehicle";
 import type { Vehicle } from "@/types/vehicle";
 
 const inputStyle = {
@@ -25,6 +26,7 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
+  const [fleetGroup, setFleetGroup] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -72,6 +74,7 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
         year: Number(year),
         enterpriseId,
         created_by: createdBy,
+        fleet_group: fleetGroup.trim() || undefined,
       });
       console.log("[VC] modal saved OK", vehicle.vehicle_id);
       onSaved(vehicle);
@@ -181,6 +184,27 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
             {fieldErrors.year && (
               <p className="mt-1 text-[11px]" style={{ color: "var(--raspberry-red-400)" }}>{fieldErrors.year}</p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+              Grupo de flota
+              <HelpTip title="Grupo de flota" text="Agrupa el vehiculo para el informe mensual: MQ, VP-EP-VB-VC, VL-TP, Maquinaria, Carga pesada o Livianos. Puede elegir una opcion o escribir otra. Opcional; los vehiculos sin grupo aparecen como 'Sin grupo' en la distribucion del informe." />
+            </label>
+            <input
+              type="text"
+              value={fleetGroup}
+              onChange={(e) => setFleetGroup(e.target.value)}
+              placeholder="Ej: MQ"
+              list="fleet-group-options"
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+              style={inputStyle}
+            />
+            <datalist id="fleet-group-options">
+              {FLEET_GROUP_OPTIONS.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
           </div>
 
           <div className="flex gap-3 pt-2">

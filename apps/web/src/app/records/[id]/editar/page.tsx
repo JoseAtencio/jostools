@@ -7,10 +7,12 @@ import AuthGuard from "@/components/AuthGuard";
 import HelpTip from "@/components/HelpTip";
 import SearchableSelect from "@/components/SearchableSelect";
 import { useAppSelector } from "@/lib/redux/hooks";
-import { getEventById, updateMaintenanceEvent } from "@/lib/services/maintenanceService";
+import { getEventById, buildEventChanges, saveEventChanges } from "@/lib/services/maintenanceService";
+import ReopenEventModal from "@/components/ReopenEventModal";
 import { getCategoriesByGroup } from "@/lib/services/categoryService";
 import { getVehicleById } from "@/lib/services/vehicleService";
 import type { EventType, SystemCategory, ActionType, RootCause, MaintenanceEvent } from "@/types/maintenance";
+import { BLOCK_REASON_OPTIONS } from "@/types/maintenance";
 import type { Category, CategoryGroup } from "@/types/categories";
 import type { Vehicle } from "@/types/vehicle";
 
@@ -25,6 +27,22 @@ function toLocalDatetimeValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function mapEventToForm(ev: MaintenanceEvent) {
+  return {
+    vehicle_id: ev.vehicle_id,
+    current_odometer: String(ev.current_odometer ?? ""),
+    event_type: ev.event_type,
+    failure_timestamp: toLocalDatetimeValue(new Date(ev.failure_timestamp)),
+    workshop_entry_time: toLocalDatetimeValue(new Date(ev.workshop_entry_time)),
+    system_category: ev.system_category,
+    component_id: ev.component_id,
+    action_taken: ev.action_taken,
+    root_cause: ev.root_cause || "",
+    observation: ev.observation || "",
+    block_reason: ev.block_reason || "",
+  };
+}
+
 export default function EditEventPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -36,6 +54,7 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [closedBlocked, setClosedBlocked] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
   const [catsLoading, setCatsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +78,8 @@ export default function EditEventPage() {
     component_id: "",
     action_taken: "",
     root_cause: "",
+    observation: "",
+    block_reason: "",
   });
 
   useEffect(() => {
@@ -90,17 +111,7 @@ export default function EditEventPage() {
           if (ev.status === "COMPLETED") {
             setClosedBlocked(true);
           } else {
-            setFormData({
-              vehicle_id: ev.vehicle_id,
-              current_odometer: String(ev.current_odometer ?? ""),
-              event_type: ev.event_type,
-              failure_timestamp: toLocalDatetimeValue(new Date(ev.failure_timestamp)),
-              workshop_entry_time: toLocalDatetimeValue(new Date(ev.workshop_entry_time)),
-              system_category: ev.system_category,
-              component_id: ev.component_id,
-              action_taken: ev.action_taken,
-              root_cause: ev.root_cause || "",
-            });
+            setFormData(mapEventToForm(ev));
           }
           try {
             const v = await getVehicleById(ev.enterpriseId, ev.vehicle_id);
@@ -163,7 +174,8 @@ export default function EditEventPage() {
     }
     setSaving(true);
     try {
-      await updateMaintenanceEvent(id, {
+      if (!event) throw new Error("Evento no disponible");
+      const data = {
         current_odometer: parseFloat(formData.current_odometer),
         event_type: formData.event_type as EventType,
         failure_timestamp: new Date(formData.failure_timestamp).toISOString(),
@@ -172,7 +184,13 @@ export default function EditEventPage() {
         component_id: formData.component_id,
         action_taken: formData.action_taken as ActionType,
         root_cause: (formData.root_cause || null) as RootCause | null,
-      });
+        observation: formData.observation.trim(),
+        block_reason: formData.block_reason,
+      };
+      const changes = buildEventChanges(event, data);
+      if (changes.length > 0) {
+        await saveEventChanges(id, data, changes, user?.displayName || "Usuario");
+      }
       router.push(`/records/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar los cambios");
@@ -237,18 +255,30 @@ export default function EditEventPage() {
             </button>
             <h1 className="text-2xl font-bold" style={{ color: "var(--graphite-100)" }}>
               Editar evento {event.vehicle_id}
-              <HelpTip title="Editar evento abierto" text="Solo puedes editar eventos abiertos. La matricula del vehiculo no se puede cambiar; las horas efectivas y el costo se determinan al cerrar el evento desde el dashboard." />
+              <HelpTip title="Editar evento" text="Solo puedes editar eventos abiertos. Si el evento esta cerrado, reabrelo con el boton indicado: volvera a estar en taller y se limpian salida, horas y costo. La matricula del vehiculo no se puede cambiar; horas, costo y salida se determinan al cerrar el evento." />
             </h1>
           </div>
 
           {closedBlocked ? (
             <div className="rounded-2xl border p-6 text-center" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
-              <p className="text-sm mb-4" style={{ color: "var(--graphite-300)" }}>
-                Este evento esta cerrado y no se puede editar. Los eventos cerrados son definitivos.
+              <p className="text-sm mb-2" style={{ color: "var(--graphite-300)" }}>
+                Este evento esta cerrado y es de solo lectura.
               </p>
-              <button onClick={() => router.push(`/records/${id}`)} className="px-5 py-2.5 rounded-xl font-medium text-sm cursor-pointer" style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}>
-                Ver detalle
-              </button>
+              <p className="text-xs mb-5" style={{ color: "var(--graphite-500)" }}>
+                Para corregirlo, reabrelo: volvera a estado Abierto (en taller) y se limpiaran la salida, las horas y el costo. Los valores anteriores quedaran en el historial de cambios.
+              </p>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <button
+                  onClick={() => setReopenOpen(true)}
+                  className="px-5 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all"
+                  style={{ backgroundColor: "var(--raspberry-red-500)", color: "#fff" }}
+                >
+                  Reabrir evento
+                </button>
+                <button onClick={() => router.push(`/records/${id}`)} className="px-5 py-2.5 rounded-xl font-medium text-sm cursor-pointer" style={{ backgroundColor: "var(--graphite-800)", border: "1px solid var(--graphite-700)", color: "var(--graphite-300)" }}>
+                  Ver detalle
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="rounded-2xl border p-6" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
@@ -397,6 +427,39 @@ export default function EditEventPage() {
                 Horas efectivas, costo de reparacion y fecha de salida se determinan al cerrar el evento desde el dashboard.
               </div>
 
+              <div className="mb-8">
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+                  Observacion / Pendiente
+                  <HelpTip title="Observacion" text="Nota libre sobre el evento: pendientes o repuestos faltantes. Se muestra en el detalle y en la seccion de observaciones del Informe Mensual." />
+                </label>
+                <textarea
+                  name="observation"
+                  value={formData.observation}
+                  onChange={(e) => updateField("observation", e.target.value)}
+                  placeholder="Ej: Faltan repuestos, pendiente de prueba de ruta"
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-y"
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="mb-8">
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+                  Motivo de bloqueo
+                  <HelpTip title="Motivo de bloqueo" text="Si el evento esta detenido (falta repuesto, falta de pago, sin disponibilidad), indiquelo aqui. Los eventos bloqueados cuentan en el backlog del Informe Mensual. Con 'Sin bloqueo' no cuenta." />
+                </label>
+                <select
+                  value={formData.block_reason}
+                  onChange={(e) => updateField("block_reason", e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none cursor-pointer"
+                  style={inputStyle}
+                >
+                  {BLOCK_REASON_OPTIONS.map((o) => (
+                    <option key={o.name} value={o.name}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
@@ -419,6 +482,28 @@ export default function EditEventPage() {
           )}
         </main>
       </div>
+
+      {reopenOpen && event && (
+        <ReopenEventModal
+          event={event}
+          onSuccess={async () => {
+            setReopenOpen(false);
+            setClosedBlocked(false);
+            try {
+              const ev = await getEventById(id);
+              if (ev) {
+                setEvent(ev);
+                setFormData(mapEventToForm(ev));
+              }
+            } catch {
+              const reopened: MaintenanceEvent = { ...event, status: "PENDING", workshop_exit_time: "", effective_work_hours: null, repair_cost: 0, block_reason: "" };
+              setEvent(reopened);
+              setFormData(mapEventToForm(reopened));
+            }
+          }}
+          onCancel={() => setReopenOpen(false)}
+        />
+      )}
     </AuthGuard>
   );
 }

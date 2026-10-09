@@ -79,7 +79,7 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold" style={{ color: "var(--graphite-100)" }}>
             Cerrar Evento
-            <HelpTip title="Cierre de evento" text="Completa los datos finales para cerrar el evento. El recuadro superior recuerda vehiculo, falla y entrada. Los campos con * son obligatorios; al cerrar, el evento pasa al historial y ya no se puede editar." />
+            <HelpTip title="Cierre de evento" text="Completa los datos finales para cerrar el evento. El recuadro superior recuerda vehiculo, falla y entrada. Los campos con * son obligatorios; al cerrar, el evento pasa al historial. Si necesitas corregir algo despues, puedes reabrirlo desde su detalle." />
           </h2>
           <button onClick={onCancel} className="p-1 rounded-lg cursor-pointer" style={{ color: "var(--graphite-500)" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--graphite-200)"; e.currentTarget.style.backgroundColor = "var(--graphite-800)"; }}

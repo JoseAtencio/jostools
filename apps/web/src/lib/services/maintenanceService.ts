@@ -1,8 +1,8 @@
-import { collection, addDoc, getDocs, query, where, Timestamp, doc, updateDoc, getDoc } from "@firebase/firestore";
+import { collection, addDoc, getDocs, query, where, Timestamp, doc, updateDoc, getDoc, arrayUnion } from "@firebase/firestore";
 import { db } from "@jostools/firebase-config";
 import * as XLSX from "xlsx";
-import type { MaintenanceEventInput, MaintenanceEvent } from "@/types/maintenance";
-import { EVENT_TYPE_LABELS, ACTION_TYPE_LABELS, SYSTEM_CATEGORY_LABELS, ROOT_CAUSE_LABELS } from "@/types/maintenance";
+import type { MaintenanceEventInput, MaintenanceEvent, EditChange, EditHistoryEntry } from "@/types/maintenance";
+import { EVENT_TYPE_LABELS, ACTION_TYPE_LABELS, SYSTEM_CATEGORY_LABELS, ROOT_CAUSE_LABELS, EVENT_STATUS_LABELS, FIELD_LABELS, BLOCK_REASON_LABELS } from "@/types/maintenance";
 
 const maintenanceRef = collection(db, "jostools", "config", "maintenance_events");
 
@@ -65,11 +65,86 @@ export async function getEventById(id: string): Promise<MaintenanceEvent | null>
 
 export async function updateMaintenanceEvent(id: string, data: Partial<MaintenanceEventInput>): Promise<void> {
   const docRef = doc(db, "jostools", "config", "maintenance_events", id);
+  await updateDoc(docRef, buildUpdateData(data));
+}
+
+function buildUpdateData(data: Partial<MaintenanceEventInput>): Record<string, unknown> {
   const updateData: Record<string, unknown> = { ...data };
   if (data.failure_timestamp) updateData.failure_timestamp = Timestamp.fromDate(new Date(data.failure_timestamp));
   if (data.workshop_entry_time) updateData.workshop_entry_time = Timestamp.fromDate(new Date(data.workshop_entry_time));
   if (data.workshop_exit_time) updateData.workshop_exit_time = Timestamp.fromDate(new Date(data.workshop_exit_time));
+  return updateData;
+}
+
+export function formatHistoryValue(field: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "vacio";
+  if (field === "status") return EVENT_STATUS_LABELS[value as "PENDING" | "COMPLETED"] ?? String(value);
+  if (field === "event_type") return EVENT_TYPE_LABELS[value as keyof typeof EVENT_TYPE_LABELS] ?? String(value);
+  if (field === "system_category") return SYSTEM_CATEGORY_LABELS[value as keyof typeof SYSTEM_CATEGORY_LABELS] ?? String(value);
+  if (field === "action_taken") return ACTION_TYPE_LABELS[value as keyof typeof ACTION_TYPE_LABELS] ?? String(value);
+  if (field === "root_cause") return ROOT_CAUSE_LABELS[value as keyof typeof ROOT_CAUSE_LABELS] ?? String(value);
+  if (field === "block_reason") return BLOCK_REASON_LABELS[value as string] ?? String(value);
+  if (field === "failure_timestamp" || field === "workshop_entry_time" || field === "workshop_exit_time") {
+    const d = new Date(String(value));
+    return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
+  }
+  if (field === "effective_work_hours") return `${value} h`;
+  if (field === "repair_cost") return `$${Number(value).toLocaleString("es-ES")}`;
+  return String(value);
+}
+
+export function buildEventChanges(before: MaintenanceEvent, data: Record<string, unknown>): EditChange[] {
+  const changes: EditChange[] = [];
+  for (const key of Object.keys(data)) {
+    const prev = (before as unknown as Record<string, unknown>)[key];
+    const next = data[key];
+    const from = formatHistoryValue(key, prev);
+    const to = formatHistoryValue(key, next);
+    if (from !== to) changes.push({ field: key, label: FIELD_LABELS[key] ?? key, from, to });
+  }
+  return changes;
+}
+
+export async function saveEventChanges(id: string, data: Partial<MaintenanceEventInput>, changes: EditChange[], editorName: string): Promise<void> {
+  const docRef = doc(db, "jostools", "config", "maintenance_events", id);
+  const updateData = buildUpdateData(data);
+  if (changes.length > 0) {
+    const entry: EditHistoryEntry = { at: new Date().toISOString(), by: editorName, changes };
+    updateData.edited_at = entry.at;
+    updateData.edited_by = editorName;
+    updateData.edit_history = arrayUnion(entry);
+  }
   await updateDoc(docRef, updateData);
+}
+
+export async function reopenMaintenanceEvent(event: MaintenanceEvent, editorName: string): Promise<void> {
+  const changes: EditChange[] = [
+    { field: "status", label: FIELD_LABELS.status, from: EVENT_STATUS_LABELS.COMPLETED, to: EVENT_STATUS_LABELS.PENDING },
+  ];
+  if (event.workshop_exit_time) {
+    changes.push({ field: "workshop_exit_time", label: FIELD_LABELS.workshop_exit_time, from: formatHistoryValue("workshop_exit_time", event.workshop_exit_time), to: "vacio" });
+  }
+  if (event.effective_work_hours != null) {
+    changes.push({ field: "effective_work_hours", label: FIELD_LABELS.effective_work_hours, from: formatHistoryValue("effective_work_hours", event.effective_work_hours), to: "vacio" });
+  }
+  if (event.repair_cost) {
+    changes.push({ field: "repair_cost", label: FIELD_LABELS.repair_cost, from: formatHistoryValue("repair_cost", event.repair_cost), to: "vacio" });
+  }
+  if (event.block_reason) {
+    changes.push({ field: "block_reason", label: FIELD_LABELS.block_reason, from: BLOCK_REASON_LABELS[event.block_reason] ?? event.block_reason, to: "vacio" });
+  }
+  const entry: EditHistoryEntry = { at: new Date().toISOString(), by: editorName, changes };
+  const docRef = doc(db, "jostools", "config", "maintenance_events", event.id);
+  await updateDoc(docRef, {
+    status: "PENDING",
+    workshop_exit_time: null,
+    effective_work_hours: null,
+    repair_cost: 0,
+    block_reason: "",
+    edited_at: entry.at,
+    edited_by: editorName,
+    edit_history: arrayUnion(entry),
+  });
 }
 
 function randomDate(daysBack: number): Date {

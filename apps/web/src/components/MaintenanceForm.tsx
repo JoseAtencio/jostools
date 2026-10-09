@@ -46,6 +46,7 @@ function createInitialFormData() {
     action_taken: "",
     root_cause: "",
     repair_cost: "",
+    observation: "",
   };
 }
 
@@ -161,7 +162,7 @@ export default function MaintenanceForm() {
     clearFieldError(name);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     updateField(e.target.name, e.target.value);
   };
 
@@ -248,6 +249,7 @@ export default function MaintenanceForm() {
         action_taken: formData.action_taken as ActionType,
         root_cause: formData.root_cause ? (formData.root_cause as RootCause) : null,
         repair_cost: parseFloat(formData.repair_cost) || 0,
+        observation: formData.observation.trim(),
         user_id: user?.uid || "",
         enterpriseId: user?.enterpriseId || "",
       };
@@ -579,6 +581,22 @@ export default function MaintenanceForm() {
           Horas y costo se determinan al cerrar el evento desde el dashboard.
         </p>
       )}
+
+      <div className="mb-8">
+        <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+          Observacion / Pendiente
+          <HelpTip title="Observacion" text="Nota libre sobre el evento: pendientes, repuestos faltantes, detalles para la proxima intervencion (ej: 'Faltan tapas del eje muerto'). Se muestra en el detalle del evento y es la columna de observaciones del Informe Mensual." />
+        </label>
+        <textarea
+          name="observation"
+          value={formData.observation}
+          onChange={handleChange}
+          placeholder="Ej: Faltan repuestos, pendiente de prueba de ruta"
+          rows={3}
+          className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-y"
+          style={inputStyle}
+        />
+      </div>
 
       {/* Botones */}
       <div className="flex gap-4">
