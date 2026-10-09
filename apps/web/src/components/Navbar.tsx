@@ -16,6 +16,7 @@ const links = [
   { href: "/", label: "Dashboard" },
   { href: "/records", label: "Registros" },
   { href: "/reports", label: "Informe mensual" },
+  { href: "/combustible", label: "Combustible" },
   { href: "/maintenance/new", label: "Nuevo registro" },
   { href: "/help", label: "Ayuda" },
 ];

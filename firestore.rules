@@ -121,6 +121,25 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /jostools/config/fuel_movements/{movementId} {
+      allow read: if isSignedIn() && resource.data.enterpriseId == myEnterpriseId();
+      allow create: if isSignedIn()
+        && request.resource.data.enterpriseId == myEnterpriseId();
+      allow update, delete: if isSignedIn()
+        && resource.data.enterpriseId == myEnterpriseId()
+        && request.resource.data.enterpriseId == resource.data.enterpriseId;
+    }
+
+    match /jostools/config/fuel_config/{entId} {
+      allow read: if isSignedIn()
+        && (resource == null || resource.data.enterpriseId == myEnterpriseId());
+      allow create, update: if isSignedIn()
+        && entId == myEnterpriseId()
+        && request.resource.data.enterpriseId == myEnterpriseId()
+        && request.resource.data.initial_liters is number;
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

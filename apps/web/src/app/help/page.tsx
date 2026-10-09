@@ -197,6 +197,33 @@ const sections: Section[] = [
     ],
   },
   {
+    id: "combustible",
+    title: "Combustible (kardex de gasoil)",
+    content:
+      "El kardex de gasoil registra las entradas (compras) y salidas (egresos) de combustible con saldo automatico. Reemplaza el Excel CONTROL DE GASOIL: el sistema calcula la existencia actual, el consumo por categoria y el cierre del mes.",
+    subsections: [
+      {
+        title: "Flujo",
+        steps: [
+          "Carga la existencia inicial una sola vez con el boton 'Existencia inicial': usa el saldo del ultimo cierre del Excel.",
+          "Registra cada compra con 'Nuevo movimiento' y categoria 'Compra (ingreso)'.",
+          "Registra cada egreso con su categoria: Interno (flota/obra con vehiculo del catalogo), Planta (toneladas x T/L), Sindicato (chofer y placa) o Terceros (placa y talonario).",
+          "Revisa la existencia actual y el cierre del mes; se recalculan solos con cada movimiento.",
+          "Exporta el cierre en Excel (hojas por categoria, igual que el formato original) o en PDF resumen.",
+        ],
+      },
+      {
+        title: "Como se calcula",
+        items: [
+          { name: "Existencia actual", desc: "Existencia inicial + ingresos - egresos de todos los movimientos registrados." },
+          { name: "Cierre del mes", desc: "Existencia previa del mes + ingresos del mes - consumo del mes = existencia al cierre. La previa incluye los movimientos anteriores al mes." },
+          { name: "Litros (planta)", desc: "En despacho de planta los litros se calculan como toneladas x T/L (factor configurable por movimiento, 1.5 por defecto)." },
+          { name: "Litros por dia", desc: "Consumo del mes dividido entre los dias transcurridos del mes." },
+        ],
+      },
+    ],
+  },
+  {
     id: "dashboard",
     title: "Dashboard e indicadores",
     subsections: [
