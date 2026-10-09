@@ -18,7 +18,6 @@ const links = [
   { href: "/reports", label: "Informe mensual" },
   { href: "/combustible", label: "Combustible" },
   { href: "/maintenance/new", label: "Nuevo registro" },
-  { href: "/help", label: "Ayuda" },
 ];
 
 export default function Navbar() {
@@ -31,6 +30,8 @@ export default function Navbar() {
   const [ownedLoaded, setOwnedLoaded] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [memberEnterprises, setMemberEnterprises] = useState<Enterprise[]>([]);
   const [inviteModal, setInviteModal] = useState<{ open: boolean; phase: "loading" | "done" | "error"; code?: string; error?: string }>({ open: false, phase: "loading" });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -144,6 +145,9 @@ export default function Navbar() {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -397,17 +401,56 @@ export default function Navbar() {
               </div>
             )}
 
-            <div className="flex items-center gap-3">
-              {user?.photoURL && <img src={user.photoURL} alt="Avatar" className="w-9 h-9 rounded-full" style={{ border: "2px solid var(--graphite-700)" }} />}
-              <div className="hidden sm:block min-w-0 max-w-[200px]">
-                <p className="text-sm font-medium truncate" style={{ color: "var(--graphite-100)" }}>{user?.displayName}</p>
-                <p className="text-xs truncate" style={{ color: "var(--graphite-500)" }}>{user?.email}</p>
-              </div>
+            <Link href="/help" aria-label="Ayuda" className="flex h-8 w-8 items-center justify-center rounded-lg transition-all" style={{
+              color: pathname === "/help" ? "var(--graphite-950)" : "var(--graphite-400)",
+              backgroundColor: pathname === "/help" ? "var(--tuscan-sun-500)" : "transparent",
+            }}
+              onMouseEnter={(e) => { if (pathname !== "/help") { e.currentTarget.style.color = "var(--graphite-200)"; e.currentTarget.style.backgroundColor = "var(--graphite-800)"; } }}
+              onMouseLeave={(e) => { if (pathname !== "/help") { e.currentTarget.style.color = "var(--graphite-400)"; e.currentTarget.style.backgroundColor = "transparent"; } }}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </Link>
+
+            <div className="relative" ref={userMenuRef}>
+              <button onClick={() => setShowUserMenu(!showUserMenu)} aria-label="Menu de usuario" className="flex items-center rounded-full cursor-pointer transition-all" style={{
+                border: `2px solid ${showUserMenu ? "var(--graphite-500)" : "var(--graphite-700)"}`,
+                backgroundColor: "var(--graphite-700)",
+              }}>
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Perfil" className="w-9 h-9 rounded-full object-cover" />
+                ) : (
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{ color: "var(--tuscan-sun-400)" }}>
+                    {(user?.displayName || user?.email || "?").charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </button>
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-60 rounded-xl shadow-xl overflow-hidden z-50" style={{ backgroundColor: "var(--graphite-800)", border: "1px solid var(--graphite-700)" }}>
+                  <div className="p-4 flex items-center gap-3" style={{ borderBottom: "1px solid var(--graphite-700)" }}>
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} alt="Perfil" className="w-10 h-10 rounded-full object-cover flex-shrink-0" style={{ border: "2px solid var(--graphite-700)" }} />
+                    ) : (
+                      <span className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0" style={{ backgroundColor: "var(--graphite-700)", color: "var(--tuscan-sun-400)" }}>
+                        {(user?.displayName || user?.email || "?").charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: "var(--graphite-100)" }}>{user?.displayName}</p>
+                      <p className="text-xs truncate" style={{ color: "var(--graphite-500)" }}>{user?.email}</p>
+                    </div>
+                  </div>
+                  <div className="p-2">
+                    <button onClick={() => dispatch(logout())} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors" style={{ color: "var(--graphite-300)" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(224, 31, 95, 0.1)"; e.currentTarget.style.color = "var(--raspberry-red-400)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "var(--graphite-300)"; }}
+                    >
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m0 0l3 3m0-3l-3 3m3-3H12.75" /></svg>
+                      Salir
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <button onClick={() => dispatch(logout())} className="text-sm px-3 py-2 rounded-xl transition-colors cursor-pointer" style={{ color: "var(--graphite-400)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--raspberry-red-400)"; e.currentTarget.style.backgroundColor = "rgba(224, 31, 95, 0.1)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--graphite-400)"; e.currentTarget.style.backgroundColor = "transparent"; }}
-            >Salir</button>
           </div>
         </div>
       </div>
