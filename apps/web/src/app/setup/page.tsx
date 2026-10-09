@@ -120,9 +120,7 @@ export default function SetupPage() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--graphite-950)" }}>
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "var(--tuscan-sun-500)" }}>
-            <span className="font-bold text-2xl" style={{ color: "var(--graphite-950)" }}>JT</span>
-          </div>
+          <img src="/brand/logo.png" alt="JosTools" className="h-10 mx-auto mb-4" />
           <h1 className="text-2xl font-bold" style={{ color: "var(--graphite-50)" }}>Bienvenido a JosTools</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--graphite-400)" }}>
             Crea la empresa donde trabajas o unete con un codigo de invitacion.

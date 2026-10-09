@@ -82,13 +82,10 @@ export default function LoginPage() {
         <div className="w-full max-w-md text-center">
           {/* Logo */}
           <div className="flex items-center justify-center mb-6">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg" style={{ backgroundColor: "var(--tuscan-sun-500)", boxShadow: "0 10px 25px -5px rgba(247, 183, 8, 0.3)" }}>
-              <span className="font-bold text-2xl" style={{ color: "var(--graphite-950)" }}>JT</span>
-            </div>
+            <img src="/brand/logo.png" alt="JosTools" className="h-12" />
           </div>
 
-          {/* Titulo */}
-          <h1 className="text-4xl font-bold mb-3" style={{ color: "var(--graphite-50)" }}>JosTools</h1>
+          {/* Subtitulo */}
           <p className="text-lg mb-8" style={{ color: "var(--graphite-400)" }}>
             Gestion inteligente de mantenimiento de flotas vehiculares
           </p>

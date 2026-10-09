@@ -210,13 +210,10 @@ export default function Navbar() {
     <>
     <nav className="border-b" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex flex-wrap items-center justify-between gap-y-2 min-h-16 py-2">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: "var(--tuscan-sun-500)" }}>
-                <span className="font-bold text-sm" style={{ color: "var(--graphite-950)" }}>JT</span>
-              </div>
-              <span className="text-xl font-bold" style={{ color: "var(--tuscan-sun-400)" }}>JosTools</span>
+            <Link href="/" className="flex items-center">
+              <img src="/brand/logo.png" alt="JosTools" className="h-8" />
             </Link>
             <div className="hidden sm:flex items-center gap-1">
               {links.map((link) => {
@@ -236,7 +233,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 ml-auto">
             {/* Enterprise selector */}
             {enterprise && (
               <div className="relative" ref={dropdownRef}>
@@ -401,9 +398,9 @@ export default function Navbar() {
 
             <div className="flex items-center gap-3">
               {user?.photoURL && <img src={user.photoURL} alt="Avatar" className="w-9 h-9 rounded-full" style={{ border: "2px solid var(--graphite-700)" }} />}
-              <div className="hidden sm:block">
-                <p className="text-sm font-medium" style={{ color: "var(--graphite-100)" }}>{user?.displayName}</p>
-                <p className="text-xs" style={{ color: "var(--graphite-500)" }}>{user?.email}</p>
+              <div className="hidden sm:block min-w-0 max-w-[200px]">
+                <p className="text-sm font-medium truncate" style={{ color: "var(--graphite-100)" }}>{user?.displayName}</p>
+                <p className="text-xs truncate" style={{ color: "var(--graphite-500)" }}>{user?.email}</p>
               </div>
             </div>
             <button onClick={() => dispatch(logout())} className="text-sm px-3 py-2 rounded-xl transition-colors cursor-pointer" style={{ color: "var(--graphite-400)" }}
