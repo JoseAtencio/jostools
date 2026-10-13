@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAppSelector } from "@/lib/redux/hooks";
 import { createMaintenanceEvent } from "@/lib/services/maintenanceService";
-import { getCategoriesByGroup } from "@/lib/services/categoryService";
+import { createCategoryOption, deleteCategoryById, getCategoriesByGroup } from "@/lib/services/categoryService";
 import { normalizeVehicleId } from "@/lib/services/vehicleService";
 import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { db } from "@jostools/firebase-config";
@@ -46,6 +46,7 @@ function createInitialFormData() {
     action_taken: "",
     root_cause: "",
     repair_cost: "",
+    observation: "",
   };
 }
 
@@ -161,7 +162,7 @@ export default function MaintenanceForm() {
     clearFieldError(name);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     updateField(e.target.name, e.target.value);
   };
 
@@ -188,6 +189,26 @@ export default function MaintenanceForm() {
     updateField(name, value);
   };
 
+  const handleCreateCategory = async (group: CategoryGroup, field: string, text: string) => {
+    const cat = await createCategoryOption(group, text);
+    setCategories((prev) =>
+      prev[group].some((c) => c.name === cat.name) ? prev : { ...prev, [group]: [...prev[group], cat] }
+    );
+    handleSelectChange(field, cat.name);
+  };
+
+  const handleRemoveCategory = async (
+    group: CategoryGroup,
+    field: "system_category" | "component_id" | "action_taken" | "root_cause",
+    name: string
+  ) => {
+    const cat = categories[group].find((c) => c.name === name);
+    if (!cat) return;
+    await deleteCategoryById(cat.id);
+    setCategories((prev) => ({ ...prev, [group]: prev[group].filter((c) => c.name !== name) }));
+    if (formData[field] === name) handleSelectChange(field, "");
+  };
+
   const validate = (): Record<string, string> => {
     const errors: Record<string, string> = {};
     if (!normalizeVehicleId(formData.vehicle_id)) errors.vehicle_id = "La matricula es requerida";
@@ -212,8 +233,11 @@ export default function MaintenanceForm() {
     ) {
       errors.workshop_exit_time = "La fecha de salida no puede ser anterior a la de entrada";
     }
-    if (!formData.current_odometer.trim()) errors.current_odometer = "El odometro es requerido";
-    else if (parseFloat(formData.current_odometer) < 0) errors.current_odometer = "El odometro no puede ser negativo";
+    if (formData.current_odometer.trim()) {
+      const odo = parseFloat(formData.current_odometer);
+      if (Number.isNaN(odo)) errors.current_odometer = "El odometro debe ser un numero";
+      else if (odo < 0) errors.current_odometer = "El odometro no puede ser negativo";
+    }
     if (formData.effective_work_hours && parseFloat(formData.effective_work_hours) < 0) errors.effective_work_hours = "Las horas no pueden ser negativas";
     if (formData.repair_cost && parseFloat(formData.repair_cost) < 0) errors.repair_cost = "El costo no puede ser negativo";
     return errors;
@@ -236,7 +260,7 @@ export default function MaintenanceForm() {
     try {
       const event: MaintenanceEventInput = {
         vehicle_id: normalizedVehicleId,
-        current_odometer: parseFloat(formData.current_odometer) || 0,
+        current_odometer: formData.current_odometer.trim() ? parseFloat(formData.current_odometer) : null,
         event_type: formData.event_type as EventType,
         failure_timestamp: formData.failure_timestamp,
         workshop_entry_time: formData.workshop_entry_time,
@@ -248,6 +272,7 @@ export default function MaintenanceForm() {
         action_taken: formData.action_taken as ActionType,
         root_cause: formData.root_cause ? (formData.root_cause as RootCause) : null,
         repair_cost: parseFloat(formData.repair_cost) || 0,
+        observation: formData.observation.trim(),
         user_id: user?.uid || "",
         enterpriseId: user?.enterpriseId || "",
       };
@@ -362,8 +387,8 @@ export default function MaintenanceForm() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
-            Odometro / Horas *
-            <HelpTip title="Odometro o horas (obligatorio)" text="Lectura actual del equipo al momento del evento: kilometros para vehiculos o horas motor para maquinaria. Ej: 145000 km o 3200 h. Use siempre la misma unidad para poder comparar entre eventos. La lectura debe ser mayor o igual a la ultima lectura registrada en la bitacora del vehiculo." />
+            Odometro / Horas
+            <HelpTip title="Odometro o horas (opcional)" text="Lectura actual del equipo al momento del evento: kilometros para vehiculos o horas motor para maquinaria. Puede quedar en blanco. Si lo llenas, la lectura debe ser mayor o igual a la ultima registrada en la bitacora. Ej: 145000 km o 3200 h." />
           </label>
           <input
             type="number"
@@ -484,6 +509,8 @@ export default function MaintenanceForm() {
             value={formData.system_category}
             options={categories.system_category.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("system_category", v)}
+            onCreateNew={(text) => handleCreateCategory("system_category", "system_category", text)}
+            onRemove={(name) => handleRemoveCategory("system_category", "system_category", name)}
             placeholder={catsLoading ? "Cargando..." : "Seleccionar sistema..."}
             required
             disabled={catsLoading}
@@ -497,6 +524,8 @@ export default function MaintenanceForm() {
             value={formData.component_id}
             options={categories.component.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("component_id", v)}
+            onCreateNew={(text) => handleCreateCategory("component", "component_id", text)}
+            onRemove={(name) => handleRemoveCategory("component", "component_id", name)}
             placeholder={catsLoading ? "Cargando..." : "Seleccionar componente..."}
             required
             disabled={catsLoading}
@@ -514,6 +543,8 @@ export default function MaintenanceForm() {
             value={formData.action_taken}
             options={categories.action_taken.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("action_taken", v)}
+            onCreateNew={(text) => handleCreateCategory("action_taken", "action_taken", text)}
+            onRemove={(name) => handleRemoveCategory("action_taken", "action_taken", name)}
             placeholder={catsLoading ? "Cargando..." : "Seleccionar accion..."}
             required
             disabled={catsLoading}
@@ -527,6 +558,8 @@ export default function MaintenanceForm() {
             value={formData.root_cause}
             options={categories.root_cause.map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("root_cause", v)}
+            onCreateNew={(text) => handleCreateCategory("root_cause", "root_cause", text)}
+            onRemove={(name) => handleRemoveCategory("root_cause", "root_cause", name)}
             placeholder={catsLoading ? "Cargando..." : "Seleccionar causa..."}
             disabled={catsLoading}
           />
@@ -579,6 +612,22 @@ export default function MaintenanceForm() {
           Horas y costo se determinan al cerrar el evento desde el dashboard.
         </p>
       )}
+
+      <div className="mb-8">
+        <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+          Observacion / Pendiente
+          <HelpTip title="Observacion" text="Nota libre sobre el evento: pendientes, repuestos faltantes, detalles para la proxima intervencion (ej: 'Faltan tapas del eje muerto'). Se muestra en el detalle del evento y es la columna de observaciones del Informe Mensual." />
+        </label>
+        <textarea
+          name="observation"
+          value={formData.observation}
+          onChange={handleChange}
+          placeholder="Ej: Faltan repuestos, pendiente de prueba de ruta"
+          rows={3}
+          className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-y"
+          style={inputStyle}
+        />
+      </div>
 
       {/* Botones */}
       <div className="flex gap-4">

@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, addDoc, doc, setDoc, Timestamp } from "@firebase/firestore";
+import { collection, deleteDoc, getDocs, query, where, addDoc, doc, setDoc, Timestamp } from "@firebase/firestore";
 import { db } from "@jostools/firebase-config";
 import type { Category, CategoryGroup } from "@/types/categories";
 import { DEFAULT_CATEGORIES } from "@/types/categories";
@@ -81,4 +81,26 @@ export async function addCategory(category: Omit<Category, "id" | "created_at">)
     created_at: Timestamp.now(),
   });
   return docRef.id;
+}
+
+export async function createCategoryOption(group: CategoryGroup, rawLabel: string): Promise<Category> {
+  const label = rawLabel.trim().replace(/\s+/g, " ");
+  if (!label) throw new Error("Escribe la nueva opcion para agregarla");
+  const existing = await getCategoriesByGroup(group);
+  const duplicate = existing.find((c) => c.label.toLowerCase() === label.toLowerCase());
+  if (duplicate) return duplicate;
+  const usedNames = new Set(existing.map((c) => c.name));
+  const base = label.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "OPCION";
+  let name = base;
+  let suffix = 2;
+  while (usedNames.has(name)) {
+    name = `${base}_${suffix}`;
+    suffix += 1;
+  }
+  const id = await addCategory({ name, label, group, active: true });
+  return { id, name, label, group, active: true, created_at: new Date().toISOString() };
+}
+
+export async function deleteCategoryById(id: string): Promise<void> {
+  await deleteDoc(doc(categoriesRef, id));
 }

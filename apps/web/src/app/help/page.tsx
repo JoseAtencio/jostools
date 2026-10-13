@@ -56,7 +56,7 @@ const sections: Section[] = [
       },
       {
         q: "Se pueden editar los eventos?",
-        a: "Los eventos abiertos si: odometro, fechas, tipo, sistema, componente, accion y causa raiz (Registros, haz click en la fila y pulsa 'Editar'). Los cerrados no se editan desde la interfaz: son definitivos para que los reportes e indicadores no cambien retroactivamente.",
+        a: "Los eventos abiertos si: odometro, fechas, tipo, sistema, componente, accion y causa raiz, observacion y motivo de bloqueo (Registros, haz click en la fila y pulsa 'Editar'). Los cerrados se pueden reabrir desde su detalle o con el boton 'Reabrir': el evento vuelve a estar en taller y se limpian salida, horas y costo (los valores anteriores quedan en el historial). Cada modificacion se guarda con fecha, usuario y detalle de lo cambiado.",
       },
       {
         q: "Como cierro un evento?",
@@ -96,8 +96,8 @@ const sections: Section[] = [
       {
         title: "Campos del formulario",
         items: [
-          { name: "Vehiculo *", desc: "Selecciona la matricula del catalogo. Escribe placa, marca o modelo para filtrar la lista. Si el vehiculo aun no existe, crea en el momento con 'Nuevo vehiculo' sin perder lo que ya capturaste." },
-          { name: "Odometro / Horas *", desc: "Lectura actual del equipo: kilometros para vehiculos o horas motor para maquinaria. Obligatorio y no puede ser negativo. Usa siempre la misma unidad para comparar entre eventos." },
+          { name: "Vehiculo *", desc: "Selecciona la matricula del catalogo. Escribe placa, codigo, marca o modelo para filtrar la lista. Si el vehiculo aun no existe, crea en el momento con 'Nuevo vehiculo' sin perder lo que ya capturaste. La X de cada fila elimina el vehiculo del catalogo (sus eventos no se borran)." },
+          { name: "Odometro / Horas", desc: "Lectura actual del equipo: kilometros para vehiculos o horas motor para maquinaria. Opcional: puede quedar en blanco. Si se indica, no puede ser negativo. Usa siempre la misma unidad para comparar entre eventos." },
           { name: "Tipo de evento *", desc: "Correctivo, Preventivo, Inspeccion o Predictivo. Es el principal agrupador de los reportes del dashboard." },
           { name: "Sistema afectado *", desc: "Area del vehiculo donde ocurrio la falla: Motor, Frenos, Electrico, Transmision, etc." },
           { name: "Componente *", desc: "Parte especifica dentro del sistema (pastillas de freno, alternador, bomba de agua...). Mientras mas especifico, mas util es el historial." },
@@ -107,6 +107,7 @@ const sections: Section[] = [
           { name: "Entrada al taller *", desc: "Cuando ingreso el vehiculo al taller. No puede ser anterior a la fecha de falla." },
           { name: "Salida del taller", desc: "Solo aplica si el evento se guarda cerrado. No puede ser anterior a la entrada." },
           { name: "Horas efectivas y costo", desc: "Solo en eventos cerrados: tiempo real de trabajo del tecnico y costo de la reparacion. Ambos no pueden ser negativos." },
+          { name: "Observacion / Pendiente", desc: "Nota libre del evento: repuestos faltantes, pendientes para la proxima intervencion. Se muestra en el detalle y en las secciones del Informe Mensual." },
         ],
       },
       {
@@ -122,8 +123,8 @@ const sections: Section[] = [
       {
         title: "Validaciones",
         steps: [
-          "Odometro requerido y mayor o igual a 0.",
-          "Tipo de evento, sistema afectado, componente, accion realizada y las dos fechas son obligatorios.",
+          "Odometro opcional; si se indica, debe ser un numero mayor o igual a 0.",
+          "Tipo de evento, sistema afectado, componente, accion realizada y las dos fechas son obligatorios. Si la opcion que necesitas no esta en la lista, usa 'Agregar nuevo' al final del desplegable para guardarla; queda en el catalogo para los proximos eventos. La X de cada opcion la elimina del catalogo.",
           "La entrada no puede ser anterior a la falla; la salida no puede ser anterior a la entrada.",
           "Las horas y el costo no pueden ser negativos.",
           "Si hay un error, el campo se marca en rojo con su mensaje y el formulario no se envia hasta corregirlo.",
@@ -149,6 +150,7 @@ const sections: Section[] = [
       { name: "Modal de cierre", desc: "Pide fecha/hora de salida (no anterior a la entrada), accion, causa raiz, horas efectivas y costo." },
       { name: "Al guardar el cierre", desc: "El evento pasa a 'Cerrado': sale de la lista de abiertos, aparece en Registros como cerrado y ya cuenta para MTTR, MTTF y Disponibilidad." },
       { name: "Cierre desde Registros", desc: "Usa el boton 'Cerrar' de la columna Accion de la lista, o entra al detalle del evento y pulsa 'Cerrar Evento'." },
+      { name: "Motivo de bloqueo", desc: "En el detalle de un evento abierto puedes marcar por que esta detenido (falta repuesto, falta de pago, sin disponibilidad). Los bloqueados cuentan en el backlog del Informe Mensual y se marcan como 'Bloqueado' en la lista de registros. Al reabrir un evento el motivo se limpia." },
     ],
   },
   {
@@ -161,9 +163,64 @@ const sections: Section[] = [
       { name: "Columnas ordenables", desc: "Vehiculo, Tipo, Estado, Fecha de falla, Entrada, Salida, Horas, Categoria y Costo. Haz click en un encabezado para ordenar de forma ascendente o descendente." },
       { name: "Seleccion y exportacion", desc: "Marca eventos con los checkboxes (o 'Todas' para seleccionar los visibles). Aparece la barra 'N seleccionados' con 'Exportar seleccion' (elige Excel o PDF) y 'Limpiar'." },
       { name: "Ver detalle", desc: "Haz click en cualquier fila: ves la informacion completa, la duracion en taller, la accion, la causa y el costo del evento." },
-      { name: "Acciones del detalle", desc: "Editar y Cerrar Evento (solo si esta abierto), Exportar (Excel o PDF) y Volver." },
-      { name: "Edicion de eventos abiertos", desc: "Se editan odometro, fechas, tipo, sistema, componente, accion y causa raiz. La matricula del vehiculo no cambia, y horas y costo se determinan al cierre. Los eventos cerrados muestran un aviso de solo lectura." },
+      { name: "Acciones del detalle", desc: "Editar y Cerrar Evento (solo si esta abierto), Reabrir (solo si esta cerrado), Exportar (Excel o PDF) y Volver. En la lista, la columna Accion trae los mismos botones con iconos." },
+      { name: "Edicion y reabrir eventos", desc: "Se editan odometro, fechas, tipo, sistema, componente, accion y causa, observacion y motivo de bloqueo. La matricula no cambia y horas, costo y salida se determinan al cierre. Los eventos cerrados se reabren desde su detalle o desde Editar (boton 'Reabrir'): vuelven a estado Abierto y se limpian salida, horas y costo." },
+      { name: "Columna Ediciones e historial", desc: "La columna 'Ediciones' de la lista marca los eventos modificados con el badge 'Editado' y el numero de modificaciones. En el detalle, la seccion 'Historial de ediciones' muestra fecha, usuario y cada campo cambiado con su valor anterior y el nuevo." },
       { name: "Estados", desc: "'Abierto' (amarillo) = vehiculo en taller. 'Cerrado' (verde) = evento finalizado con todos sus datos." },
+    ],
+  },
+  {
+    id: "informe-mensual",
+    title: "Informe mensual",
+    content:
+      "El informe mensual genera automaticamente el mismo informe que antes se hacia a mano: resumen del mes, preventivos, correctivos, distribucion por flota y sistema, backlog y conclusiones. Se abre desde 'Informe mensual' en el navbar.",
+    subsections: [
+      {
+        title: "Flujo",
+        steps: [
+          "Elige el mes en el selector de la parte superior; el informe se genera al instante.",
+          "Revisa las tarjetas de resumen (total, % preventivo/correctivo, eficiencia de cierre, backlog, costo) y los indicadores del mes.",
+          "Antes de revisar la distribucion por flota, usa 'Configurar flota' para asignar un grupo (MQ, VP-EP-VB-VC, VL-TP, Maquinaria, Carga pesada, Livianos) a cada vehiculo; los que no tengan grupo aparecen como 'Sin grupo'.",
+          "Edita el parrafo de conclusiones si quieres; el texto que se ve es el que se exporta.",
+          "Exporta con 'Exportar PDF' (incluye las graficas) o 'Exportar Excel' (hojas: Resumen, Preventivos, Correctivos, Flota, Sistema, Backlog).",
+        ],
+      },
+      {
+        title: "Como se calcula",
+        items: [
+          { name: "Eficiencia de cierre", desc: "Eventos cerrados en el mes / eventos que estuvieron en taller durante el mes x 100." },
+          { name: "Backlog", desc: "Eventos abiertos o cerrados con motivo de bloqueo: todavia tienen trabajo pendiente." },
+          { name: "Distribucion por flota", desc: "Eventos del mes agrupados por el campo 'Grupo de flota' del vehiculo (se asigna en 'Configurar flota' o al crear el vehiculo)." },
+          { name: "Observaciones", desc: "El campo 'Observacion / Pendiente' de cada evento alimenta la columna de observaciones de las secciones 1 y 2." },
+        ],
+      },
+    ],
+  },
+  {
+    id: "combustible",
+    title: "Combustible (kardex de gasoil)",
+    content:
+      "El kardex de gasoil registra las entradas (compras) y salidas (egresos) de combustible con saldo automatico. Reemplaza el Excel CONTROL DE GASOIL: el sistema calcula la existencia actual, el consumo por categoria y el cierre del mes.",
+    subsections: [
+      {
+        title: "Flujo",
+        steps: [
+          "Carga la existencia inicial una sola vez con el boton 'Existencia inicial': usa el saldo del ultimo cierre del Excel.",
+          "Registra cada compra con 'Nuevo movimiento' y categoria 'Compra (ingreso)'.",
+          "Registra cada egreso con su categoria: Interno (flota/obra con vehiculo del catalogo), Planta (toneladas x T/L), Sindicato (chofer y placa) o Terceros (placa y talonario).",
+          "Revisa la existencia actual y el cierre del mes; se recalculan solos con cada movimiento.",
+          "Exporta el cierre en Excel (hojas por categoria, igual que el formato original) o en PDF resumen.",
+        ],
+      },
+      {
+        title: "Como se calcula",
+        items: [
+          { name: "Existencia actual", desc: "Existencia inicial + ingresos - egresos de todos los movimientos registrados." },
+          { name: "Cierre del mes", desc: "Existencia previa del mes + ingresos del mes - consumo del mes = existencia al cierre. La previa incluye los movimientos anteriores al mes." },
+          { name: "Litros (planta)", desc: "En despacho de planta los litros se calculan como toneladas x T/L (factor configurable por movimiento, 1.5 por defecto)." },
+          { name: "Litros por dia", desc: "Consumo del mes dividido entre los dias transcurridos del mes." },
+        ],
+      },
     ],
   },
   {

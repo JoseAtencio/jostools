@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from "@firebase/firestore";
+import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "@firebase/firestore";
 import { db } from "@jostools/firebase-config";
 import type { Vehicle, VehicleInput } from "@/types/vehicle";
 
@@ -12,12 +12,14 @@ function toVehicle(id: string, data: Record<string, any>): Vehicle {
   return {
     id,
     vehicle_id: data.vehicle_id ?? "",
+    vehicle_code: data.vehicle_code || undefined,
     brand: data.brand ?? "",
     model: data.model ?? "",
     year: Number(data.year ?? 0),
     enterpriseId: data.enterpriseId ?? "",
     created_by: data.created_by ?? "",
     created_at: typeof data.created_at === "string" ? data.created_at : new Date().toISOString(),
+    fleet_group: data.fleet_group,
   };
 }
 
@@ -48,26 +50,42 @@ export async function createVehicle(data: VehicleInput): Promise<Vehicle> {
   const snapshot = await getDocs(query(vehiclesRef, where("enterpriseId", "==", data.enterpriseId)));
   if (snapshot.docs.some((d) => d.data().vehicle_id === vehicleId))
     throw new Error("Esta matricula ya esta registrada");
+  const vehicleCode = data.vehicle_code?.trim().toUpperCase() || undefined;
+  if (vehicleCode && snapshot.docs.some((d) => (d.data().vehicle_code ?? "").toUpperCase() === vehicleCode))
+    throw new Error("Este codigo ya esta registrado");
 
   const id = `${data.enterpriseId}_${vehicleId}`;
   const created_at = new Date().toISOString();
   await setDoc(doc(vehiclesRef, id), {
     vehicle_id: vehicleId,
+    ...(vehicleCode ? { vehicle_code: vehicleCode } : {}),
     brand: data.brand.trim(),
     model: data.model.trim(),
     year: data.year,
     enterpriseId: data.enterpriseId,
     created_by: data.created_by,
     created_at,
+    ...(data.fleet_group?.trim() ? { fleet_group: data.fleet_group.trim() } : {}),
   });
   return {
     id,
     vehicle_id: vehicleId,
+    vehicle_code: vehicleCode,
     brand: data.brand.trim(),
     model: data.model.trim(),
     year: data.year,
     enterpriseId: data.enterpriseId,
     created_by: data.created_by,
     created_at,
+    ...(data.fleet_group?.trim() ? { fleet_group: data.fleet_group.trim() } : {}),
   };
+}
+
+export async function updateVehicleFleetGroup(vehicle: Vehicle, fleetGroup: string): Promise<void> {
+  const trimmed = fleetGroup.trim();
+  await updateDoc(doc(vehiclesRef, vehicle.id), trimmed ? { fleet_group: trimmed } : { fleet_group: deleteField() });
+}
+
+export async function deleteVehicle(vehicle: Vehicle): Promise<void> {
+  await deleteDoc(doc(vehiclesRef, vehicle.id));
 }

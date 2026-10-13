@@ -12,7 +12,7 @@ export default function HelpTip({ text, title }: HelpTipProps) {
         ?
       </span>
       <span
-        className="pointer-events-none absolute bottom-full left-0 z-30 mb-1 w-72 max-w-xs rounded-xl border px-3 py-2 text-xs font-normal leading-relaxed opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+        className="hidden group-hover:block pointer-events-none absolute bottom-full left-0 z-30 mb-1 w-72 max-w-xs rounded-xl border px-3 py-2 text-xs font-normal leading-relaxed"
         style={{
           backgroundColor: "var(--graphite-900)",
           borderColor: "var(--graphite-700)",

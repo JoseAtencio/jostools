@@ -11,6 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "JosTools",
   description: "Herramientas web de mantenimiento de flotas",
+  icons: { icon: "/brand/icon.jpg" },
 };
 
 export default function RootLayout({

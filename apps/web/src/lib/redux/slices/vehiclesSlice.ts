@@ -27,6 +27,10 @@ const slice = createSlice({
       else list.push(action.payload.vehicle);
       state.byEnterprise[action.payload.enterpriseId] = list;
     },
+    removeVehicle(state, action: PayloadAction<{ enterpriseId: string; vehicleId: string }>) {
+      const list = state.byEnterprise[action.payload.enterpriseId] ?? [];
+      state.byEnterprise[action.payload.enterpriseId] = list.filter((v) => v.vehicle_id !== action.payload.vehicleId);
+    },
     resetVehicles() { return initialState; },
   },
   extraReducers: (builder) => {
@@ -34,5 +38,5 @@ const slice = createSlice({
   },
 });
 
-export const { setVehicles, setLoading, addVehicle, resetVehicles } = slice.actions;
+export const { setVehicles, setLoading, addVehicle, removeVehicle, resetVehicles } = slice.actions;
 export default slice.reducer;
