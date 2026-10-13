@@ -146,8 +146,11 @@ export default function EditEventPage() {
 
   const validate = (): Record<string, string> => {
     const errors: Record<string, string> = {};
-    if (!formData.current_odometer.trim()) errors.current_odometer = "El odometro es requerido";
-    else if (parseFloat(formData.current_odometer) < 0) errors.current_odometer = "El odometro no puede ser negativo";
+    if (formData.current_odometer.trim()) {
+      const odo = parseFloat(formData.current_odometer);
+      if (Number.isNaN(odo)) errors.current_odometer = "El odometro debe ser un numero";
+      else if (odo < 0) errors.current_odometer = "El odometro no puede ser negativo";
+    }
     if (!formData.event_type) errors.event_type = "El tipo de evento es requerido";
     if (!formData.system_category) errors.system_category = "El sistema afectado es requerido";
     if (!formData.component_id) errors.component_id = "El componente es requerido";
@@ -176,7 +179,7 @@ export default function EditEventPage() {
     try {
       if (!event) throw new Error("Evento no disponible");
       const data = {
-        current_odometer: parseFloat(formData.current_odometer),
+        current_odometer: formData.current_odometer.trim() ? parseFloat(formData.current_odometer) : null,
         event_type: formData.event_type as EventType,
         failure_timestamp: new Date(formData.failure_timestamp).toISOString(),
         workshop_entry_time: new Date(formData.workshop_entry_time).toISOString(),
@@ -304,8 +307,8 @@ export default function EditEventPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
-                    Odometro / Horas *
-                    <HelpTip title="Odometro o horas (obligatorio)" text="Lectura actual del equipo al momento del evento: kilometros para vehiculos o horas motor para maquinaria. Ej: 145000 km o 3200 h." />
+                    Odometro / Horas
+                    <HelpTip title="Odometro o horas (opcional)" text="Lectura actual del equipo al momento del evento: kilometros para vehiculos o horas motor para maquinaria. Puede quedar en blanco. Ej: 145000 km o 3200 h." />
                   </label>
                   <input
                     type="number"

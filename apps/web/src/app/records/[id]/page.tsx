@@ -139,7 +139,7 @@ export default function EventDetailPage() {
 
   const items: { label: string; value: string; help?: string }[] = [
     { label: "Vehiculo", value: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year || ""}`.trim() : event.vehicle_id, help: vehicle ? "Datos del catalogo de vehiculos." : "Este vehiculo no esta en el catalogo; se muestra solo la matricula." },
-    { label: "Odometro / Horas", value: event.current_odometer.toLocaleString("es-ES") },
+    { label: "Odometro / Horas", value: event.current_odometer != null ? event.current_odometer.toLocaleString("es-ES") : "--" },
     { label: "Tipo de evento", value: EVENT_TYPE_LABELS[event.event_type] ?? event.event_type },
     { label: "Estado", value: EVENT_STATUS_LABELS[event.status || "PENDING"] },
     { label: "Fecha/Hora Falla", value: formatDateTime(event.failure_timestamp) },

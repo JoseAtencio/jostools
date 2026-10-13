@@ -213,8 +213,11 @@ export default function MaintenanceForm() {
     ) {
       errors.workshop_exit_time = "La fecha de salida no puede ser anterior a la de entrada";
     }
-    if (!formData.current_odometer.trim()) errors.current_odometer = "El odometro es requerido";
-    else if (parseFloat(formData.current_odometer) < 0) errors.current_odometer = "El odometro no puede ser negativo";
+    if (formData.current_odometer.trim()) {
+      const odo = parseFloat(formData.current_odometer);
+      if (Number.isNaN(odo)) errors.current_odometer = "El odometro debe ser un numero";
+      else if (odo < 0) errors.current_odometer = "El odometro no puede ser negativo";
+    }
     if (formData.effective_work_hours && parseFloat(formData.effective_work_hours) < 0) errors.effective_work_hours = "Las horas no pueden ser negativas";
     if (formData.repair_cost && parseFloat(formData.repair_cost) < 0) errors.repair_cost = "El costo no puede ser negativo";
     return errors;
@@ -237,7 +240,7 @@ export default function MaintenanceForm() {
     try {
       const event: MaintenanceEventInput = {
         vehicle_id: normalizedVehicleId,
-        current_odometer: parseFloat(formData.current_odometer) || 0,
+        current_odometer: formData.current_odometer.trim() ? parseFloat(formData.current_odometer) : null,
         event_type: formData.event_type as EventType,
         failure_timestamp: formData.failure_timestamp,
         workshop_entry_time: formData.workshop_entry_time,
@@ -364,8 +367,8 @@ export default function MaintenanceForm() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
-            Odometro / Horas *
-            <HelpTip title="Odometro o horas (obligatorio)" text="Lectura actual del equipo al momento del evento: kilometros para vehiculos o horas motor para maquinaria. Ej: 145000 km o 3200 h. Use siempre la misma unidad para poder comparar entre eventos. La lectura debe ser mayor o igual a la ultima lectura registrada en la bitacora del vehiculo." />
+            Odometro / Horas
+            <HelpTip title="Odometro o horas (opcional)" text="Lectura actual del equipo al momento del evento: kilometros para vehiculos o horas motor para maquinaria. Puede quedar en blanco. Si lo llenas, la lectura debe ser mayor o igual a la ultima registrada en la bitacora. Ej: 145000 km o 3200 h." />
           </label>
           <input
             type="number"

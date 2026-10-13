@@ -20,7 +20,7 @@ export interface EditHistoryEntry {
 export interface MaintenanceEvent {
   id: string;
   vehicle_id: string;
-  current_odometer: number;
+  current_odometer: number | null;
   event_type: EventType;
   failure_timestamp: string;
   workshop_entry_time: string;

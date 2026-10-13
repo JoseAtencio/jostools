@@ -97,7 +97,7 @@ const sections: Section[] = [
         title: "Campos del formulario",
         items: [
           { name: "Vehiculo *", desc: "Selecciona la matricula del catalogo. Escribe placa, marca o modelo para filtrar la lista. Si el vehiculo aun no existe, crea en el momento con 'Nuevo vehiculo' sin perder lo que ya capturaste." },
-          { name: "Odometro / Horas *", desc: "Lectura actual del equipo: kilometros para vehiculos o horas motor para maquinaria. Obligatorio y no puede ser negativo. Usa siempre la misma unidad para comparar entre eventos." },
+          { name: "Odometro / Horas", desc: "Lectura actual del equipo: kilometros para vehiculos o horas motor para maquinaria. Opcional: puede quedar en blanco. Si se indica, no puede ser negativo. Usa siempre la misma unidad para comparar entre eventos." },
           { name: "Tipo de evento *", desc: "Correctivo, Preventivo, Inspeccion o Predictivo. Es el principal agrupador de los reportes del dashboard." },
           { name: "Sistema afectado *", desc: "Area del vehiculo donde ocurrio la falla: Motor, Frenos, Electrico, Transmision, etc." },
           { name: "Componente *", desc: "Parte especifica dentro del sistema (pastillas de freno, alternador, bomba de agua...). Mientras mas especifico, mas util es el historial." },
@@ -123,7 +123,7 @@ const sections: Section[] = [
       {
         title: "Validaciones",
         steps: [
-          "Odometro requerido y mayor o igual a 0.",
+          "Odometro opcional; si se indica, debe ser un numero mayor o igual a 0.",
           "Tipo de evento, sistema afectado, componente, accion realizada y las dos fechas son obligatorios.",
           "La entrada no puede ser anterior a la falla; la salida no puede ser anterior a la entrada.",
           "Las horas y el costo no pueden ser negativos.",
