@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import AuthGuard from "@/components/AuthGuard";
@@ -34,6 +34,50 @@ function shortDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? "--" : d.toLocaleDateString("es-ES");
 }
 
+type ActionTipState = { text: string; x: number; y: number } | null;
+
+function ActionButton({
+  enabled,
+  label,
+  tipEnabled,
+  tipDisabled,
+  colors,
+  onClick,
+  setTip,
+  children,
+}: {
+  enabled: boolean;
+  label: string;
+  tipEnabled: string;
+  tipDisabled: string;
+  colors: { bg: string; fg: string; border: string; hoverBg: string };
+  onClick: () => void;
+  setTip: Dispatch<SetStateAction<ActionTipState>>;
+  children: ReactNode;
+}) {
+  const [hover, setHover] = useState(false);
+  const style = !enabled
+    ? { backgroundColor: "var(--graphite-800)", color: "var(--graphite-600)", border: "1px solid var(--graphite-700)", cursor: "not-allowed" }
+    : hover
+      ? { backgroundColor: colors.hoverBg, color: "var(--graphite-950)", border: `1px solid ${colors.hoverBg}`, cursor: "pointer" }
+      : { backgroundColor: colors.bg, color: colors.fg, border: `1px solid ${colors.border}`, cursor: "pointer" };
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-disabled={!enabled}
+      onClick={() => { if (enabled) onClick(); }}
+      onMouseEnter={(e) => { setHover(true); setTip({ text: enabled ? tipEnabled : tipDisabled, x: e.clientX, y: e.clientY }); }}
+      onMouseMove={(e) => setTip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t))}
+      onMouseLeave={() => { setHover(false); setTip(null); }}
+      className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors"
+      style={style}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function RecordsPage() {
   const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
@@ -47,6 +91,8 @@ export default function RecordsPage() {
   const [closeEvent, setCloseEvent] = useState<MaintenanceEvent | null>(null);
   const [reopenEvent, setReopenEvent] = useState<MaintenanceEvent | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [actionTip, setActionTip] = useState<ActionTipState>(null);
+  const [showGuide, setShowGuide] = useState(true);
 
   const loadData = () => {
     if (!user?.enterpriseId) return;
@@ -144,6 +190,78 @@ export default function RecordsPage() {
               <HelpTip title="Bitacora de eventos" text="Todos los eventos de mantenimiento de la empresa. Haz click en cualquier fila para ver el detalle completo del evento. Puedes buscar, filtrar por mes, ordenar por columna y seleccionar eventos para exportarlos en Excel o PDF." />
             </h1>
             <span className="text-sm" style={{ color: "var(--graphite-500)" }}>{filtered.length} registros</span>
+          </div>
+
+          <div className="mb-6 rounded-xl border" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "var(--tuscan-sun-400)" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-semibold" style={{ color: "var(--graphite-200)" }}>Que hace cada accion</span>
+              </div>
+              <button
+                onClick={() => setShowGuide((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                style={{ backgroundColor: "var(--graphite-800)", color: "var(--graphite-400)", border: "1px solid var(--graphite-700)" }}
+              >
+                {showGuide ? "Ocultar" : "Mostrar"}
+                <svg className="w-3 h-3" style={{ transform: showGuide ? "rotate(0deg)" : "rotate(180deg)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            </div>
+            {showGuide && (
+              <>
+                <div className="px-4 pb-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {([
+                    {
+                      name: "Editar",
+                      desc: "Abre el formulario para corregir un evento abierto. Los eventos cerrados no se pueden editar; reabrielos primero.",
+                      bg: "rgba(0, 81, 255, 0.12)",
+                      color: "var(--crayola-blue-400)",
+                      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+                    },
+                    {
+                      name: "Cerrar",
+                      desc: "Registra la salida del taller con fecha, horas efectivas y costo final. Solo disponible en eventos abiertos.",
+                      bg: "rgba(102, 153, 145, 0.15)",
+                      color: "var(--ash-grey-400)",
+                      icon: "M5 13l4 4L19 7",
+                    },
+                    {
+                      name: "Reabrir",
+                      desc: "Vuelve un evento cerrado a estado abierto para poder corregirlo. Pide confirmacion antes de aplicar.",
+                      bg: "rgba(224, 31, 95, 0.12)",
+                      color: "var(--raspberry-red-400)",
+                      icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
+                    },
+                    {
+                      name: "Seleccionar",
+                      desc: "Marca filas con los checkboxes y usa 'Exportar seleccion' para descargarlas en Excel o PDF.",
+                      bg: "rgba(247, 183, 8, 0.12)",
+                      color: "var(--tuscan-sun-400)",
+                      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+                    },
+                  ]).map((item) => (
+                    <div key={item.name} className="flex items-start gap-2.5">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0" style={{ backgroundColor: item.bg, color: item.color }}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                        </svg>
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold" style={{ color: item.color }}>{item.name}</p>
+                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--graphite-400)" }}>{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="px-4 pb-4 text-xs" style={{ color: "var(--graphite-500)" }}>
+                  Haz click en cualquier fila para ver el detalle completo. Tambien puedes buscar, ordenar por columna y filtrar por mes.
+                </p>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-3 flex-wrap mb-6">
@@ -244,7 +362,10 @@ export default function RecordsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((event) => (
+                    {filtered.map((event) => {
+                      const isOpen = !event.status || event.status === "PENDING";
+                      const isClosed = event.status === "COMPLETED";
+                      return (
                       <tr
                         key={event.id}
                         className="transition-colors cursor-pointer"
@@ -317,48 +438,66 @@ export default function RecordsPage() {
                         </td>
                         <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5 flex-nowrap">
-                            {(event.status === "PENDING" || !event.status) && (
-                              <>
-                                <button
-                                  onClick={() => router.push(`/records/${event.id}/editar`)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all whitespace-nowrap"
-                                  style={{ backgroundColor: "rgba(0, 81, 255, 0.12)", color: "var(--crayola-blue-400)", border: "1px solid rgba(0, 81, 255, 0.3)" }}
-                                  title="Editar evento"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                  Editar
-                                </button>
-                                <button onClick={() => setCloseEvent(event)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all whitespace-nowrap" style={{ backgroundColor: "rgba(102, 153, 145, 0.15)", color: "var(--ash-grey-400)", border: "1px solid rgba(102, 153, 145, 0.3)" }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--ash-grey-400)"; e.currentTarget.style.color = "var(--graphite-950)"; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(102, 153, 145, 0.15)"; e.currentTarget.style.color = "var(--ash-grey-400)"; }}
-                                  title="Cerrar evento"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                  Cerrar
-                                </button>
-                              </>
-                            )}
-                            {event.status === "COMPLETED" && (
-                              <button
-                                onClick={() => setReopenEvent(event)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all whitespace-nowrap"
-                                style={{ backgroundColor: "rgba(224, 31, 95, 0.12)", color: "var(--raspberry-red-400)", border: "1px solid rgba(224, 31, 95, 0.3)" }}
-                                title="Reabrir evento"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                Reabrir
-                              </button>
-                            )}
+                            <ActionButton
+                              enabled={isOpen}
+                              label="Editar evento"
+                              tipEnabled="Editar: abre el formulario para corregir los datos del evento"
+                              tipDisabled="No disponible: el evento esta cerrado. Reabrielo para editarlo."
+                              colors={{ bg: "rgba(0, 81, 255, 0.12)", fg: "var(--crayola-blue-400)", border: "rgba(0, 81, 255, 0.3)", hoverBg: "var(--crayola-blue-400)" }}
+                              onClick={() => router.push(`/records/${event.id}/editar`)}
+                              setTip={setActionTip}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </ActionButton>
+                            <ActionButton
+                              enabled={isOpen}
+                              label="Cerrar evento"
+                              tipEnabled="Cerrar: registra la salida del taller, horas efectivas y costo final"
+                              tipDisabled="No disponible: el evento ya esta cerrado."
+                              colors={{ bg: "rgba(102, 153, 145, 0.15)", fg: "var(--ash-grey-400)", border: "rgba(102, 153, 145, 0.3)", hoverBg: "var(--ash-grey-400)" }}
+                              onClick={() => setCloseEvent(event)}
+                              setTip={setActionTip}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            </ActionButton>
+                            <ActionButton
+                              enabled={isClosed}
+                              label="Reabrir evento"
+                              tipEnabled="Reabrir: vuelve el evento a estado abierto para poder corregirlo"
+                              tipDisabled="No disponible: el evento sigue abierto."
+                              colors={{ bg: "rgba(224, 31, 95, 0.12)", fg: "var(--raspberry-red-400)", border: "rgba(224, 31, 95, 0.3)", hoverBg: "var(--raspberry-red-400)" }}
+                              onClick={() => setReopenEvent(event)}
+                              setTip={setActionTip}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </ActionButton>
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
         </main>
+
+        {actionTip && (
+          <div
+            className="fixed z-50 pointer-events-none max-w-[280px] rounded-lg border px-2.5 py-1.5 text-xs leading-relaxed shadow-xl"
+            style={{
+              left: actionTip.x,
+              top: actionTip.y - 8,
+              transform: "translate(-50%, -100%)",
+              backgroundColor: "var(--graphite-900)",
+              borderColor: "var(--graphite-700)",
+              color: "var(--graphite-200)",
+            }}
+          >
+            {actionTip.text}
+          </div>
+        )}
       </div>
 
       {closeEvent && (
