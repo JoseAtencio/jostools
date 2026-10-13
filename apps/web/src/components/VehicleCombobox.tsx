@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import VehicleModal from "@/components/VehicleModal";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
-import { addVehicle, setLoading, setVehicles } from "@/lib/redux/slices/vehiclesSlice";
-import { getVehicles, normalizeVehicleId } from "@/lib/services/vehicleService";
+import { addVehicle, removeVehicle, setLoading, setVehicles } from "@/lib/redux/slices/vehiclesSlice";
+import { deleteVehicle, getVehicles, normalizeVehicleId } from "@/lib/services/vehicleService";
+import type { Vehicle } from "@/types/vehicle";
 
 const inputStyle = {
   backgroundColor: "var(--graphite-800)",
@@ -35,6 +36,7 @@ export default function VehicleCombobox({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [showModal, setShowModal] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,12 +92,13 @@ export default function VehicleCombobox({
   const q = value.trim().toUpperCase();
   const normalized = normalizeVehicleId(value);
   const normalizedQ = normalized.replace(/-/g, "");
-  const matched = vehicles.find((v) => v.vehicle_id === normalized) ?? null;
+  const matched = vehicles.find((v) => v.vehicle_id === normalized || (v.vehicle_code ? v.vehicle_code === q : false)) ?? null;
   const matches = vehicles
     .filter(
       (v) =>
         !q ||
         v.vehicle_id.replace(/-/g, "").includes(normalizedQ) ||
+        (v.vehicle_code ? v.vehicle_code.includes(q) : false) ||
         v.brand.toUpperCase().includes(q) ||
         v.model.toUpperCase().includes(q),
     )
@@ -109,6 +112,21 @@ export default function VehicleCombobox({
     console.log("[VC] select", vehicleId);
     onChange(vehicleId);
     setOpen(false);
+  };
+
+  const handleDeleteVehicle = async (v: Vehicle) => {
+    if (!enterpriseId || deleting) return;
+    if (!window.confirm(`Eliminar el vehiculo ${v.vehicle_id} del catalogo? Sus eventos no se borran.`)) return;
+    setDeleting(v.vehicle_id);
+    try {
+      await deleteVehicle(v);
+      dispatch(removeVehicle({ enterpriseId, vehicleId: v.vehicle_id }));
+      if (value === v.vehicle_id || (v.vehicle_code ? value === v.vehicle_code : false)) onChange("");
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "No se pudo eliminar el vehiculo");
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -172,18 +190,36 @@ export default function VehicleCombobox({
               )}
 
               {matches.map((v, idx) => (
-                <button
+                <div
                   key={v.id}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => selectVehicle(v.vehicle_id)}
-                  onMouseEnter={() => setActiveIndex(idx)}
-                  className="w-full px-4 py-2 text-left cursor-pointer transition-colors"
+                  className="flex items-center"
                   style={{ backgroundColor: idx === activeIndex ? "var(--graphite-800)" : "transparent" }}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  onMouseDown={(e) => e.preventDefault()}
                 >
-                  <span className="block font-medium" style={{ color: "var(--graphite-100)" }}>{v.vehicle_id}</span>
-                  <span className="block text-xs" style={{ color: "var(--graphite-400)" }}>{v.brand} {v.model} {v.year}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => selectVehicle(v.vehicle_id)}
+                    className="flex-1 min-w-0 px-4 py-2 text-left cursor-pointer transition-colors"
+                  >
+                    <span className="block font-medium" style={{ color: "var(--graphite-100)" }}>{v.vehicle_id}</span>
+                    <span className="block text-xs truncate" style={{ color: "var(--graphite-400)" }}>{v.vehicle_code ? `${v.vehicle_code} · ` : ""}{v.brand} {v.model} {v.year}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteVehicle(v)}
+                    disabled={deleting !== null}
+                    title="Eliminar vehiculo"
+                    className="px-3 py-2 mr-1 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ color: "var(--graphite-500)" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--raspberry-red-400)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--graphite-500)"; }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               ))}
 
               {showSave && (
@@ -208,7 +244,7 @@ export default function VehicleCombobox({
 
       {matched && (
         <span className="inline-block mt-2 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: "rgba(102, 153, 145, 0.15)", color: "var(--ash-grey-400)" }}>
-          ✓ Registrado — {matched.brand} {matched.model} {matched.year}
+          ✓ Registrado — {matched.vehicle_code ? `${matched.vehicle_code} · ` : ""}{matched.brand} {matched.model} {matched.year}
         </span>
       )}
 

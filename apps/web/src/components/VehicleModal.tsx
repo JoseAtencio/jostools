@@ -23,6 +23,7 @@ interface VehicleModalProps {
 
 export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy, onSaved, onClose }: VehicleModalProps) {
   const [vehicleId, setVehicleId] = useState(initialVehicleId);
+  const [vehicleCode, setVehicleCode] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
@@ -69,6 +70,7 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
     try {
       const vehicle = await createVehicle({
         vehicle_id: vehicleId,
+        vehicle_code: vehicleCode.trim() || undefined,
         brand,
         model,
         year: Number(year),
@@ -90,11 +92,11 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
-      <div className="rounded-2xl border w-full max-w-sm p-6" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-700)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="rounded-2xl border w-full max-w-xl p-6" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-700)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold" style={{ color: "var(--graphite-100)" }}>
             Nuevo Vehiculo
-            <HelpTip title="Catalogo de vehiculos" text="Registra un vehiculo nuevo en el catalogo de la empresa para poder abrirle eventos de mantenimiento. Todos los campos son obligatorios (*); la matricula es el identificador unico y no se puede repetir." />
+            <HelpTip title="Catalogo de vehiculos" text="Registra un vehiculo nuevo en el catalogo de la empresa para poder abrirle eventos de mantenimiento. Los campos con * son obligatorios; la matricula es el identificador unico y no se puede repetir. El codigo del vehiculo es opcional." />
           </h2>
           <button onClick={onClose} className="p-1 rounded-lg cursor-pointer" style={{ color: "var(--graphite-500)" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--graphite-200)"; e.currentTarget.style.backgroundColor = "var(--graphite-800)"; }}
@@ -111,7 +113,8 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+            <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
               Matricula *
               <HelpTip title="Matricula (obligatoria)" text="Placa o VIN unico del vehiculo dentro de la empresa. Ej: ABC-123. No se puede repetir: es la clave con la que se relacionan todos sus eventos. Si ya existe, no vuelva a crearla." />
@@ -128,6 +131,21 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
             {fieldErrors.vehicle_id && (
               <p className="mt-1 text-[11px]" style={{ color: "var(--raspberry-red-400)" }}>{fieldErrors.vehicle_id}</p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
+              Codigo del vehiculo
+              <HelpTip title="Codigo del vehiculo (opcional)" text="Codigo interno o de inventario del vehiculo. Ej: V-001. Ademas de la matricula, puedes buscar y filtrar el vehiculo por este codigo en los formularios. Opcional y unico por empresa." />
+            </label>
+            <input
+              type="text"
+              value={vehicleCode}
+              onChange={(e) => setVehicleCode(e.target.value.toUpperCase())}
+              placeholder="Ej: V-001"
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+              style={inputStyle}
+            />
           </div>
 
           <div>
@@ -205,6 +223,7 @@ export default function VehicleModal({ initialVehicleId, enterpriseId, createdBy
                 <option key={g} value={g} />
               ))}
             </datalist>
+          </div>
           </div>
 
           <div className="flex gap-3 pt-2">

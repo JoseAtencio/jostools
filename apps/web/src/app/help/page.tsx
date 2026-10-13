@@ -96,7 +96,7 @@ const sections: Section[] = [
       {
         title: "Campos del formulario",
         items: [
-          { name: "Vehiculo *", desc: "Selecciona la matricula del catalogo. Escribe placa, marca o modelo para filtrar la lista. Si el vehiculo aun no existe, crea en el momento con 'Nuevo vehiculo' sin perder lo que ya capturaste." },
+          { name: "Vehiculo *", desc: "Selecciona la matricula del catalogo. Escribe placa, codigo, marca o modelo para filtrar la lista. Si el vehiculo aun no existe, crea en el momento con 'Nuevo vehiculo' sin perder lo que ya capturaste. La X de cada fila elimina el vehiculo del catalogo (sus eventos no se borran)." },
           { name: "Odometro / Horas", desc: "Lectura actual del equipo: kilometros para vehiculos o horas motor para maquinaria. Opcional: puede quedar en blanco. Si se indica, no puede ser negativo. Usa siempre la misma unidad para comparar entre eventos." },
           { name: "Tipo de evento *", desc: "Correctivo, Preventivo, Inspeccion o Predictivo. Es el principal agrupador de los reportes del dashboard." },
           { name: "Sistema afectado *", desc: "Area del vehiculo donde ocurrio la falla: Motor, Frenos, Electrico, Transmision, etc." },
@@ -124,7 +124,7 @@ const sections: Section[] = [
         title: "Validaciones",
         steps: [
           "Odometro opcional; si se indica, debe ser un numero mayor o igual a 0.",
-          "Tipo de evento, sistema afectado, componente, accion realizada y las dos fechas son obligatorios.",
+          "Tipo de evento, sistema afectado, componente, accion realizada y las dos fechas son obligatorios. Si la opcion que necesitas no esta en la lista, usa 'Agregar nuevo' al final del desplegable para guardarla; queda en el catalogo para los proximos eventos. La X de cada opcion la elimina del catalogo.",
           "La entrada no puede ser anterior a la falla; la salida no puede ser anterior a la entrada.",
           "Las horas y el costo no pueden ser negativos.",
           "Si hay un error, el campo se marca en rojo con su mensaje y el formulario no se envia hasta corregirlo.",

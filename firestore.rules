@@ -118,7 +118,7 @@ service cloud.firestore {
         && request.resource.data.model is string
         && request.resource.data.year is number;
       allow update: if isSignedIn() && resource.data.enterpriseId == myEnterpriseId();
-      allow delete: if false;
+      allow delete: if isSignedIn() && resource.data.enterpriseId == myEnterpriseId();
     }
 
     match /jostools/config/fuel_movements/{movementId} {

@@ -9,7 +9,7 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { useAppSelector } from "@/lib/redux/hooks";
 import { getEventById, buildEventChanges, saveEventChanges } from "@/lib/services/maintenanceService";
 import ReopenEventModal from "@/components/ReopenEventModal";
-import { getCategoriesByGroup } from "@/lib/services/categoryService";
+import { createCategoryOption, deleteCategoryById, getCategoriesByGroup } from "@/lib/services/categoryService";
 import { getVehicleById } from "@/lib/services/vehicleService";
 import type { EventType, SystemCategory, ActionType, RootCause, MaintenanceEvent } from "@/types/maintenance";
 import { BLOCK_REASON_OPTIONS } from "@/types/maintenance";
@@ -142,6 +142,26 @@ export default function EditEventPage() {
     const list = cats.map((c) => ({ name: c.name, label: c.label }));
     if (value && !list.some((o) => o.name === value)) list.unshift({ name: value, label: value });
     return list;
+  };
+
+  const handleCreateCategory = async (group: CategoryGroup, field: string, text: string) => {
+    const cat = await createCategoryOption(group, text);
+    setCategories((prev) =>
+      prev[group].some((c) => c.name === cat.name) ? prev : { ...prev, [group]: [...prev[group], cat] }
+    );
+    updateField(field, cat.name);
+  };
+
+  const handleRemoveCategory = async (
+    group: CategoryGroup,
+    field: "system_category" | "component_id" | "action_taken" | "root_cause",
+    name: string
+  ) => {
+    const cat = categories[group].find((c) => c.name === name);
+    if (!cat) return;
+    await deleteCategoryById(cat.id);
+    setCategories((prev) => ({ ...prev, [group]: prev[group].filter((c) => c.name !== name) }));
+    if (formData[field] === name) updateField(field, "");
   };
 
   const validate = (): Record<string, string> => {
@@ -378,6 +398,8 @@ export default function EditEventPage() {
                   value={formData.system_category}
                   options={selectOptions(categories.system_category, formData.system_category)}
                   onChange={(v) => updateField("system_category", v)}
+                  onCreateNew={(text) => handleCreateCategory("system_category", "system_category", text)}
+                  onRemove={(name) => handleRemoveCategory("system_category", "system_category", name)}
                   placeholder={catsLoading ? "Cargando..." : "Seleccionar sistema..."}
                   required
                   disabled={catsLoading}
@@ -392,6 +414,8 @@ export default function EditEventPage() {
                   value={formData.component_id}
                   options={selectOptions(categories.component, formData.component_id)}
                   onChange={(v) => updateField("component_id", v)}
+                  onCreateNew={(text) => handleCreateCategory("component", "component_id", text)}
+                  onRemove={(name) => handleRemoveCategory("component", "component_id", name)}
                   placeholder={catsLoading ? "Cargando..." : "Seleccionar componente..."}
                   required
                   disabled={catsLoading}
@@ -406,6 +430,8 @@ export default function EditEventPage() {
                   value={formData.action_taken}
                   options={selectOptions(categories.action_taken, formData.action_taken)}
                   onChange={(v) => updateField("action_taken", v)}
+                  onCreateNew={(text) => handleCreateCategory("action_taken", "action_taken", text)}
+                  onRemove={(name) => handleRemoveCategory("action_taken", "action_taken", name)}
                   placeholder={catsLoading ? "Cargando..." : "Seleccionar accion..."}
                   required
                   disabled={catsLoading}
@@ -420,6 +446,8 @@ export default function EditEventPage() {
                   value={formData.root_cause}
                   options={selectOptions(categories.root_cause, formData.root_cause)}
                   onChange={(v) => updateField("root_cause", v)}
+                  onCreateNew={(text) => handleCreateCategory("root_cause", "root_cause", text)}
+                  onRemove={(name) => handleRemoveCategory("root_cause", "root_cause", name)}
                   placeholder={catsLoading ? "Cargando..." : "Seleccionar causa raiz..."}
                   disabled={catsLoading}
                 />
