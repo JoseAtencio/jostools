@@ -12,7 +12,15 @@ export interface Indicators {
 }
 
 function hoursBetween(a: string, b: string): number {
-  return (new Date(b).getTime() - new Date(a).getTime()) / 3600000;
+  const t1 = new Date(a).getTime();
+  const t2 = new Date(b).getTime();
+  if (Number.isNaN(t1) || Number.isNaN(t2)) return NaN;
+  return (t2 - t1) / 3600000;
+}
+
+function isValidDate(iso: string | undefined | null): boolean {
+  if (!iso) return false;
+  return !Number.isNaN(new Date(iso).getTime());
 }
 
 export function calculateIndicators(events: MaintenanceEvent[]): Indicators {
@@ -27,10 +35,13 @@ export function calculateIndicators(events: MaintenanceEvent[]): Indicators {
   const preventive = events.filter((e) => e.event_type === "PREVENTIVE");
   const inspectionCount = events.filter((e) => e.event_type === "INSPECTION").length;
 
+  const closedCorrective = corrective.filter((e) => isValidDate(e.workshop_exit_time));
+
   // --- MTTR: promedio de downtime total por evento correctivo ---
   // Downtime = workshop_exit_time - failure_timestamp
-  const mttr = corrective.length > 0
-    ? corrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0) / corrective.length
+  // Solo se miden los correctivos con salida registrada: un evento abierto no tiene duracion.
+  const mttr = closedCorrective.length > 0
+    ? closedCorrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0) / closedCorrective.length
     : null;
 
   // --- MTBF: (Tiempo Total de Operación - Tiempo Total Inactividad) / N Correctivos ---
@@ -40,7 +51,7 @@ export function calculateIndicators(events: MaintenanceEvent[]): Indicators {
     const primeraFalla = new Date(allEvents[0].failure_timestamp).getTime();
     const ahora = Date.now();
     const totalObservacion = (ahora - primeraFalla) / 3600000;
-    const totalInactividad = corrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0);
+    const totalInactividad = closedCorrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0);
     const result = (totalObservacion - totalInactividad) / corrective.length;
     mtbf = result !== null && !isNaN(result) && result > 0 ? Math.round(result * 10) / 10 : null;
   }
@@ -71,6 +82,11 @@ export function formatHours(hours: number | null): string {
 export function formatPercent(value: number | null): string {
   if (value === null || isNaN(value)) return "--%";
   return `${value.toFixed(1)}%`;
+}
+
+export function formatIndicator(value: number | null | undefined, suffix = "", decimals = 1): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "--";
+  return `${value.toFixed(decimals)}${suffix}`;
 }
 
 // --- Chart Data Functions ---
@@ -139,10 +155,12 @@ export function getMTBFMTTRTrend(events: MaintenanceEvent[]): TrendPoint[] {
       .filter((e) => e.event_type === "CORRECTIVE")
       .sort((a, b) => new Date(a.failure_timestamp).getTime() - new Date(b.failure_timestamp).getTime());
 
+    const closedCorrective = corrective.filter((e) => isValidDate(e.workshop_exit_time));
+
     let mtbf: number | null = null;
     if (corrective.length >= 2) {
       const totalH = hoursBetween(corrective[0].failure_timestamp, corrective[corrective.length - 1].failure_timestamp);
-      const downtime = corrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0);
+      const downtime = closedCorrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0);
       mtbf = (totalH - downtime) / corrective.length;
     } else if (corrective.length === 1 && prevCorrectiveTimestamp !== null) {
       mtbf = (new Date(corrective[0].failure_timestamp).getTime() - prevCorrectiveTimestamp) / 3600000;
@@ -151,8 +169,8 @@ export function getMTBFMTTRTrend(events: MaintenanceEvent[]): TrendPoint[] {
       prevCorrectiveTimestamp = new Date(corrective[corrective.length - 1].failure_timestamp).getTime();
     }
 
-    const mttr = corrective.length > 0
-      ? corrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0) / corrective.length
+    const mttr = closedCorrective.length > 0
+      ? closedCorrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0) / closedCorrective.length
       : null;
 
     return {

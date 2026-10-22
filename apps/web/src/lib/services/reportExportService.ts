@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 import type { ReportData } from "./reportService";
+import { formatIndicator } from "./indicatorService";
 import { EVENT_TYPE_SHORT_LABELS, SYSTEM_CATEGORY_LABELS, EVENT_STATUS_LABELS, BLOCK_REASON_LABELS } from "@/types/maintenance";
 import type { MaintenanceEvent } from "@/types/maintenance";
 
@@ -58,9 +59,9 @@ export async function exportReportToPdf(report: ReportData, conclusions: string,
       ["Cerrados en el mes", String(report.closedInMonth)],
       ["Backlog", String(report.backlog.length)],
       ["Costo total", `$${report.costTotal.toLocaleString("es-ES")}`],
-      ["MTTR", report.indicators.mttr != null ? `${report.indicators.mttr.toFixed(1)} h` : "--"],
-      ["MTBF", report.indicators.mtbf != null ? `${report.indicators.mtbf.toFixed(1)} h` : "--"],
-      ["Disponibilidad", report.indicators.availability != null ? `${report.indicators.availability}%` : "--"],
+      ["MTTR", formatIndicator(report.indicators.mttr, " h")],
+      ["MTBF", formatIndicator(report.indicators.mtbf, " h")],
+      ["Disponibilidad", formatIndicator(report.indicators.availability, "%")],
     ],
     ...tableStyles(),
   });
