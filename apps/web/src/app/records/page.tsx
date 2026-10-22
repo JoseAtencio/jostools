@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo, type ReactNode, type Dispatch, type SetStateAction } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode, type Dispatch, type SetStateAction, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import AuthGuard from "@/components/AuthGuard";
 import CloseEventModal from "@/components/CloseEventModal";
 import ReopenEventModal from "@/components/ReopenEventModal";
 import ExportFormatModal from "@/components/ExportFormatModal";
+import ReportBuilderModal from "@/components/ReportBuilderModal";
 import HelpTip from "@/components/HelpTip";
 import { useAppSelector } from "@/lib/redux/hooks";
 import { getMaintenanceEvents, exportEventsToExcel } from "@/lib/services/maintenanceService";
@@ -35,6 +36,40 @@ function shortDate(iso: string): string {
 }
 
 type ActionTipState = { text: string; x: number; y: number } | null;
+
+function TruncatedText({
+  text,
+  setTip,
+  className = "",
+  style,
+}: {
+  text: string;
+  setTip: Dispatch<SetStateAction<ActionTipState>>;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setOverflowing(el.scrollWidth > el.clientWidth + 1);
+  }, [text]);
+
+  return (
+    <span
+      ref={ref}
+      className={`block truncate ${className}`}
+      style={style}
+      onMouseEnter={(e) => { if (overflowing) setTip({ text, x: e.clientX, y: e.clientY }); }}
+      onMouseMove={(e) => { if (overflowing) setTip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t)); }}
+      onMouseLeave={() => { if (overflowing) setTip(null); }}
+    >
+      {text}
+    </span>
+  );
+}
 
 function ActionButton({
   enabled,
@@ -91,6 +126,7 @@ export default function RecordsPage() {
   const [closeEvent, setCloseEvent] = useState<MaintenanceEvent | null>(null);
   const [reopenEvent, setReopenEvent] = useState<MaintenanceEvent | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [actionTip, setActionTip] = useState<ActionTipState>(null);
   const [showGuide, setShowGuide] = useState(true);
 
@@ -289,6 +325,16 @@ export default function RecordsPage() {
                 <option key={m} value={m}>{monthLabel(m)}</option>
               ))}
             </select>
+            <button
+              onClick={() => setReportOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+              style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              GENERAR REPORTE
+            </button>
           </div>
 
           {selected.size > 0 && (
@@ -325,10 +371,24 @@ export default function RecordsPage() {
           ) : (
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--graphite-800)" }}>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[1080px]">
+                <table className="w-full text-sm table-fixed">
+                  <colgroup>
+                    <col style={{ width: 36 }} />
+                    <col />
+                    <col style={{ width: 96 }} />
+                    <col style={{ width: 100 }} />
+                    <col style={{ width: 82 }} />
+                    <col style={{ width: 82 }} />
+                    <col style={{ width: 82 }} />
+                    <col style={{ width: 60 }} />
+                    <col />
+                    <col style={{ width: 76 }} />
+                    <col className="hidden xl:table-column" style={{ width: 96 }} />
+                    <col style={{ width: 108 }} />
+                  </colgroup>
                   <thead>
                     <tr style={{ backgroundColor: "var(--graphite-900)" }}>
-                      <th className="px-3 py-3.5 w-10">
+                      <th className="px-2 py-3.5">
                         <input
                           type="checkbox"
                           checked={allVisibleSelected}
@@ -347,18 +407,18 @@ export default function RecordsPage() {
                         { key: "effective_work_hours" as TableSortKey, label: "Horas", align: "right" as const },
                         { key: "system_category" as TableSortKey, label: "Categoria" },
                         { key: "repair_cost" as TableSortKey, label: "Costo", align: "right" as const },
-                        { key: "edited_at" as TableSortKey, label: "Ediciones" },
-                      ]).map((col) => (
+                        { key: "edited_at" as TableSortKey, label: "Ediciones", hideOnSmall: true },
+                      ] as { key: TableSortKey; label: string; align?: "right"; hideOnSmall?: boolean }[]).map((col) => (
                         <th
                           key={col.key}
                           onClick={() => handleSort(col.key)}
-                          className={`px-3 py-3.5 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap ${col.align === "right" ? "text-right" : "text-left"}`}
+                          className={`px-2 py-3.5 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none whitespace-nowrap ${col.align === "right" ? "text-right" : "text-left"} ${col.hideOnSmall ? "hidden xl:table-cell" : ""}`}
                           style={{ color: sortKey === col.key ? "var(--graphite-200)" : "var(--graphite-400)" }}
                         >
                           {col.label}<SortIcon col={col.key} />
                         </th>
                       ))}
-                      <th className="px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "var(--graphite-400)" }}>Accion</th>
+                      <th className="px-2 py-3.5 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "var(--graphite-400)" }}>Accion</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -374,7 +434,7 @@ export default function RecordsPage() {
                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--graphite-900)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
                       >
-                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={selected.has(event.id)}
@@ -383,8 +443,15 @@ export default function RecordsPage() {
                             style={{ accentColor: "var(--tuscan-sun-500)" }}
                           />
                         </td>
-                        <td className="px-3 py-3 font-mono text-[13px] font-semibold tracking-wide" style={{ color: "var(--graphite-100)" }}>{event.vehicle_id}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-2 py-3">
+                          <TruncatedText
+                            text={event.vehicle_id}
+                            setTip={setActionTip}
+                            className="font-mono text-[13px] font-semibold tracking-wide"
+                            style={{ color: "var(--graphite-100)" }}
+                          />
+                        </td>
+                        <td className="px-2 py-3">
                           <span
                             className="inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                             title={EVENT_TYPE_LABELS[event.event_type]}
@@ -396,7 +463,7 @@ export default function RecordsPage() {
                             {EVENT_TYPE_SHORT_LABELS[event.event_type]}
                           </span>
                         </td>
-                        <td className="px-3 py-3">
+                        <td className="px-2 py-3">
                           <span
                             className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                             style={{
@@ -417,13 +484,19 @@ export default function RecordsPage() {
                             </span>
                           ) : null}
                         </td>
-                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--graphite-300)" }}>{shortDate(event.failure_timestamp)}</td>
-                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--graphite-300)" }}>{shortDate(event.workshop_entry_time)}</td>
-                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: event.workshop_exit_time ? "var(--graphite-300)" : "var(--graphite-600)" }}>{event.workshop_exit_time ? shortDate(event.workshop_exit_time) : "--"}</td>
-                        <td className="px-3 py-3 text-right whitespace-nowrap tabular-nums" style={{ color: event.effective_work_hours != null ? "var(--graphite-300)" : "var(--graphite-600)" }}>{event.effective_work_hours != null ? `${event.effective_work_hours} h` : "--"}</td>
-                        <td className="px-3 py-3" style={{ color: "var(--graphite-300)" }}>{SYSTEM_CATEGORY_LABELS[event.system_category] ?? event.system_category ?? "--"}</td>
-                        <td className="px-3 py-3 text-right font-semibold tabular-nums whitespace-nowrap" style={{ color: "var(--graphite-100)" }}>${event.repair_cost.toLocaleString("es-ES")}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-2 py-3 whitespace-nowrap" style={{ color: "var(--graphite-300)" }}>{shortDate(event.failure_timestamp)}</td>
+                        <td className="px-2 py-3 whitespace-nowrap" style={{ color: "var(--graphite-300)" }}>{shortDate(event.workshop_entry_time)}</td>
+                        <td className="px-2 py-3 whitespace-nowrap" style={{ color: event.workshop_exit_time ? "var(--graphite-300)" : "var(--graphite-600)" }}>{event.workshop_exit_time ? shortDate(event.workshop_exit_time) : "--"}</td>
+                        <td className="px-2 py-3 text-right whitespace-nowrap tabular-nums" style={{ color: event.effective_work_hours != null ? "var(--graphite-300)" : "var(--graphite-600)" }}>{event.effective_work_hours != null ? `${event.effective_work_hours} h` : "--"}</td>
+                        <td className="px-2 py-3">
+                          <TruncatedText
+                            text={SYSTEM_CATEGORY_LABELS[event.system_category] ?? event.system_category ?? "--"}
+                            setTip={setActionTip}
+                            style={{ color: "var(--graphite-300)" }}
+                          />
+                        </td>
+                        <td className="px-2 py-3 text-right font-semibold tabular-nums whitespace-nowrap" style={{ color: "var(--graphite-100)" }}>${event.repair_cost.toLocaleString("es-ES")}</td>
+                        <td className="px-2 py-3 hidden xl:table-cell">
                           {event.edited_at ? (
                             <span
                               className="inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-help"
@@ -436,7 +509,7 @@ export default function RecordsPage() {
                             <span style={{ color: "var(--graphite-600)" }}>--</span>
                           )}
                         </td>
-                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5 flex-nowrap">
                             <ActionButton
                               enabled={isOpen}
@@ -487,7 +560,7 @@ export default function RecordsPage() {
           <div
             className="fixed z-50 pointer-events-none max-w-[280px] rounded-lg border px-2.5 py-1.5 text-xs leading-relaxed shadow-xl"
             style={{
-              left: actionTip.x,
+              left: Math.min(Math.max(actionTip.x, 150), typeof window !== "undefined" ? window.innerWidth - 150 : actionTip.x),
               top: actionTip.y - 8,
               transform: "translate(-50%, -100%)",
               backgroundColor: "var(--graphite-900)",
@@ -509,6 +582,8 @@ export default function RecordsPage() {
       {exportOpen && (
         <ExportFormatModal count={selected.size} titulo="seleccion" onCancel={() => setExportOpen(false)} onExport={handleExport} />
       )}
+
+      <ReportBuilderModal open={reportOpen} onClose={() => setReportOpen(false)} events={events} />
     </AuthGuard>
   );
 }

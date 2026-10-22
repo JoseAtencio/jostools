@@ -3,13 +3,14 @@
 import { useAppSelector } from "@/lib/redux/hooks";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
-import { seedTestEvents, getMaintenanceEvents, exportEventsToExcel } from "@/lib/services/maintenanceService";
+import { getMaintenanceEvents, exportEventsToExcel } from "@/lib/services/maintenanceService";
 import {
   calculateIndicators, formatHours, formatPercent,
   getEventTypePieData, getMonthlyBarData, getCostByCategoryData,
   getMTBFMTTRTrend, getTopVehiclesData,
   type Indicators, type PieData, type BarData, type CostData, type TrendPoint, type VehicleData,
 } from "@/lib/services/indicatorService";
+import { CHART_DESCRIPTIONS } from "@/lib/chartDescriptions";
 import EventTypePieChart from "@/components/charts/EventTypePieChart";
 import MonthlyEventsChart from "@/components/charts/MonthlyEventsChart";
 import TrendChart from "@/components/charts/TrendChart";
@@ -73,7 +74,6 @@ function getActiveQuickFilter(from: string | null, to: string | null): QuickFilt
 export default function Home() {
   const { user } = useAppSelector((state) => state.auth);
   const router = useRouter();
-  const [seeding, setSeeding] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [closeEvent, setCloseEvent] = useState<MaintenanceEvent | null>(null);
 
@@ -133,19 +133,6 @@ export default function Home() {
   }, [user?.enterpriseId]);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  const handleSeed = async () => {
-    if (!user?.uid) return;
-    setSeeding(true);
-    try {
-      await seedTestEvents(user.uid, user.enterpriseId!, 10);
-      await loadData();
-    } catch (err) {
-      console.error("Error seeding:", err);
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const handleExport = () => {
     if (!indicators || filteredEvents.length === 0) return;
@@ -379,21 +366,21 @@ export default function Home() {
 
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-            <EventTypePieChart data={pieData} onFilter={(key) => toggleFilter("eventType", key)} activeFilter={filters.eventType} helpText="Cuenta los eventos del periodo por tipo: Correctivo, Preventivo, Inspeccion y Predictivo. Haz click en un segmento o en su leyenda para filtrar todo el dashboard por ese tipo; vuelve a hacer click para quitar el filtro." />
-            <MonthlyEventsChart data={barData} onFilter={(key) => toggleFilter("month", key)} activeFilter={filters.month} helpText="Cuantos eventos se registraron en cada mes del periodo. Haz click en una barra para filtrar todo el dashboard por ese mes; haz click de nuevo para quitar el filtro." />
+            <EventTypePieChart data={pieData} onFilter={(key) => toggleFilter("eventType", key)} activeFilter={filters.eventType} subtitle={CHART_DESCRIPTIONS.eventType} helpText="Cuenta los eventos del periodo por tipo: Correctivo, Preventivo, Inspeccion y Predictivo. Haz click en un segmento o en su leyenda para filtrar todo el dashboard por ese tipo; vuelve a hacer click para quitar el filtro." />
+            <MonthlyEventsChart data={barData} onFilter={(key) => toggleFilter("month", key)} activeFilter={filters.month} subtitle={CHART_DESCRIPTIONS.monthly} helpText="Cuantos eventos se registraron en cada mes del periodo. Haz click en una barra para filtrar todo el dashboard por ese mes; haz click de nuevo para quitar el filtro." />
           </div>
 
           {/* Charts Row 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-            <TrendChart data={trendData} helpText="Evolucion mensual de los indicadores de confiabilidad: MTBF (horas entre fallas, cuanto mas alto mejor) y MTTR (horas de reparacion, cuanto mas bajo mejor). Se calcula solo con eventos Correctivos cerrados." />
-            <CostByCategoryChart data={costData} onFilter={(key) => toggleFilter("category", CATEGORY_ES_TO_KEY[key] ?? null)} activeFilter={filters.category ? (Object.entries(CATEGORY_ES_TO_KEY).find(([_, v]) => v === filters.category)?.[0] ?? null) : null} helpText="Costo acumulado de reparaciones por sistema del vehiculo (Motor, Frenos, Electrico...). Haz click en una barra para filtrar todo el dashboard por esa categoria." />
+            <TrendChart data={trendData} subtitle={CHART_DESCRIPTIONS.trend} helpText="Evolucion mensual de los indicadores de confiabilidad: MTBF (horas entre fallas, cuanto mas alto mejor) y MTTR (horas de reparacion, cuanto mas bajo mejor). Se calcula solo con eventos Correctivos cerrados." />
+            <CostByCategoryChart data={costData} onFilter={(key) => toggleFilter("category", CATEGORY_ES_TO_KEY[key] ?? null)} activeFilter={filters.category ? (Object.entries(CATEGORY_ES_TO_KEY).find(([_, v]) => v === filters.category)?.[0] ?? null) : null} subtitle={CHART_DESCRIPTIONS.cost} helpText="Costo acumulado de reparaciones por sistema del vehiculo (Motor, Frenos, Electrico...). Haz click en una barra para filtrar todo el dashboard por esa categoria." />
           </div>
 
           {/* Charts Row 3 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-10">
-            <TopVehiclesChart data={vehicleData} onFilter={(key) => toggleFilter("vehicle", key)} activeFilter={filters.vehicle} helpText="Los 5 vehiculos con mas eventos registrados en el periodo. Haz click en una barra para filtrar todo el dashboard por ese vehiculo." />
+            <TopVehiclesChart data={vehicleData} onFilter={(key) => toggleFilter("vehicle", key)} activeFilter={filters.vehicle} subtitle={CHART_DESCRIPTIONS.topVehicles} helpText="Los 5 vehiculos con mas eventos registrados en el periodo. Haz click en una barra para filtrar todo el dashboard por ese vehiculo." />
 
-            {/* Welcome + Seed + Export */}
+            {/* Welcome + Export */}
             <div className="rounded-2xl border p-8 flex flex-col items-center justify-center text-center" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: "rgba(247, 183, 8, 0.1)" }}>
                 <svg className="w-8 h-8" style={{ color: "var(--tuscan-sun-400)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,22 +388,12 @@ export default function Home() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--graphite-50)" }}>Bienvenido, {user?.displayName?.split(" ")[0]}</h3>
-              <p className="text-sm mb-5" style={{ color: "var(--graphite-400)" }}>Registra eventos o genera datos de prueba para ver los indicadores en accion.</p>
+              <p className="text-sm mb-5" style={{ color: "var(--graphite-400)" }}>Registra eventos para ver los indicadores en accion.</p>
               <div className="flex flex-col gap-3 w-full">
                 <a href="/maintenance/new" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all" style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                   Registrar Mantenimiento
                 </a>
-                <button onClick={handleSeed} disabled={seeding}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: "var(--graphite-800)", color: "var(--graphite-300)", border: "1px solid var(--graphite-700)" }}
-                >
-                  {seeding ? (
-                    <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Generando...</>
-                  ) : (
-                    <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>Generar 10 reportes de prueba</>
-                  )}
-                </button>
                 <button onClick={handleExport} disabled={filteredEvents.length === 0}
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: "rgba(102, 153, 145, 0.15)", color: "var(--ash-grey-400)", border: "1px solid rgba(102, 153, 145, 0.3)" }}

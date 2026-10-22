@@ -9,7 +9,7 @@ import EventTypePieChart from "@/components/charts/EventTypePieChart";
 import { useAppSelector } from "@/lib/redux/hooks";
 import { getMaintenanceEvents } from "@/lib/services/maintenanceService";
 import { getVehicles } from "@/lib/services/vehicleService";
-import { getEventTypePieData, formatHours } from "@/lib/services/indicatorService";
+import { getEventTypePieData, formatHours, formatIndicator } from "@/lib/services/indicatorService";
 import { buildReport, getMonthOptions, monthLabelOf, generateConclusions, type ReportGroup } from "@/lib/services/reportService";
 import { exportReportToPdf, exportReportToExcel } from "@/lib/services/reportExportService";
 import { SYSTEM_CATEGORY_LABELS, BLOCK_REASON_LABELS, EVENT_STATUS_LABELS, type MaintenanceEvent } from "@/types/maintenance";
@@ -200,9 +200,9 @@ export default function ReportsPage() {
               <div className="mb-4 p-4 rounded-2xl border" style={{ backgroundColor: "var(--graphite-900)", borderColor: "var(--graphite-800)" }}>
                 <p className="text-sm mb-2 font-semibold" style={{ color: "var(--graphite-300)" }}>Indicadores del mes</p>
                 <p className="text-sm" style={{ color: "var(--graphite-400)" }}>
-                  MTTR: {report.indicators.mttr != null ? formatHours(report.indicators.mttr) : "--"}
-                  {" | "}MTBF: {report.indicators.mtbf != null ? formatHours(report.indicators.mtbf) : "--"}
-                  {" | "}Disponibilidad: {report.indicators.availability != null ? `${report.indicators.availability}%` : "--"}
+                  MTTR: {formatHours(report.indicators.mttr)}
+                  {" | "}MTBF: {formatHours(report.indicators.mtbf)}
+                  {" | "}Disponibilidad: {formatIndicator(report.indicators.availability, "%")}
                 </p>
               </div>
 

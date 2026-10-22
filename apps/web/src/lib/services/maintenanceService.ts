@@ -3,6 +3,7 @@ import { db } from "@jostools/firebase-config";
 import * as XLSX from "xlsx";
 import type { MaintenanceEventInput, MaintenanceEvent, EditChange, EditHistoryEntry } from "@/types/maintenance";
 import { EVENT_TYPE_LABELS, ACTION_TYPE_LABELS, SYSTEM_CATEGORY_LABELS, ROOT_CAUSE_LABELS, EVENT_STATUS_LABELS, FIELD_LABELS, BLOCK_REASON_LABELS } from "@/types/maintenance";
+import { formatIndicator } from "./indicatorService";
 
 const maintenanceRef = collection(db, "jostools", "config", "maintenance_events");
 
@@ -232,10 +233,10 @@ export function exportEventsToExcel(events: MaintenanceEvent[], indicators: { mt
   XLSX.utils.book_append_sheet(wb, ws, "Eventos");
 
   const indRows = [
-    { Indicador: "MTBF (horas)", Valor: indicators.mtbf?.toFixed(1) ?? "--" },
-    { Indicador: "MTTR (horas)", Valor: indicators.mttr?.toFixed(1) ?? "--" },
-    { Indicador: "MTTF (horas)", Valor: indicators.mttf?.toFixed(1) ?? "--" },
-    { Indicador: "Disponibilidad (%)", Valor: indicators.availability?.toFixed(1) ?? "--" },
+    { Indicador: "MTBF (horas)", Valor: formatIndicator(indicators.mtbf) },
+    { Indicador: "MTTR (horas)", Valor: formatIndicator(indicators.mttr) },
+    { Indicador: "MTTF (horas)", Valor: formatIndicator(indicators.mttf) },
+    { Indicador: "Disponibilidad (%)", Valor: formatIndicator(indicators.availability) },
     { Indicador: "Total eventos", Valor: events.length },
   ];
   const wsInd = XLSX.utils.json_to_sheet(indRows);
