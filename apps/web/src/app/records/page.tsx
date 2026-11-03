@@ -11,9 +11,11 @@ import ReportBuilderModal from "@/components/ReportBuilderModal";
 import HelpTip from "@/components/HelpTip";
 import { useAppSelector } from "@/lib/redux/hooks";
 import { getMaintenanceEvents, exportEventsToExcel } from "@/lib/services/maintenanceService";
+import { getVehicles } from "@/lib/services/vehicleService";
+import type { Vehicle } from "@/types/vehicle";
 import { exportEventsToPdf } from "@/lib/services/pdfExportService";
 import { calculateIndicators } from "@/lib/services/indicatorService";
-import { EVENT_TYPE_LABELS, EVENT_TYPE_SHORT_LABELS, SYSTEM_CATEGORY_LABELS, EVENT_STATUS_LABELS, BLOCK_REASON_LABELS, type MaintenanceEvent, type EventType } from "@/types/maintenance";
+import { EVENT_TYPE_LABELS, EVENT_TYPE_SHORT_LABELS, SYSTEM_CATEGORY_LABELS, EVENT_STATUS_LABELS, BLOCK_REASON_LABELS, formatMoney, type MaintenanceEvent, type EventType } from "@/types/maintenance";
 
 type TableSortKey =
   | "vehicle_id"
@@ -117,6 +119,7 @@ export default function RecordsPage() {
   const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
   const [events, setEvents] = useState<MaintenanceEvent[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState("");
@@ -133,6 +136,7 @@ export default function RecordsPage() {
   const loadData = () => {
     if (!user?.enterpriseId) return;
     getMaintenanceEvents(user.enterpriseId).then((e) => { setEvents(e); setLoading(false); });
+    getVehicles(user.enterpriseId).then(setVehicles).catch(() => setVehicles([]));
   };
 
   useEffect(() => { loadData(); }, [user?.enterpriseId]);
@@ -197,6 +201,8 @@ export default function RecordsPage() {
   };
 
   const selectedEvents = useMemo(() => events.filter((e) => selected.has(e.id)), [events, selected]);
+
+  const vehicleMap = useMemo(() => new Map(vehicles.map((v) => [v.vehicle_id, v])), [vehicles]);
 
   const handleExport = (format: "excel" | "pdf") => {
     if (format === "excel") exportEventsToExcel(selectedEvents, calculateIndicators(selectedEvents));
@@ -398,7 +404,7 @@ export default function RecordsPage() {
                         />
                       </th>
                       {([
-                        { key: "vehicle_id" as TableSortKey, label: "Vehiculo" },
+                        { key: "vehicle_id" as TableSortKey, label: "Unidad" },
                         { key: "event_type" as TableSortKey, label: "Tipo" },
                         { key: "status" as TableSortKey, label: "Estado" },
                         { key: "failure_timestamp" as TableSortKey, label: "Falla" },
@@ -450,6 +456,23 @@ export default function RecordsPage() {
                             className="font-mono text-[13px] font-semibold tracking-wide"
                             style={{ color: "var(--graphite-100)" }}
                           />
+                          {(event.asset_type === "PLANT" || vehicleMap.get(event.vehicle_id)?.vehicle_code) && (
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              {event.asset_type === "PLANT" && (
+                                <span className="text-[9px] uppercase tracking-wide px-1 rounded flex-shrink-0" style={{ backgroundColor: "rgba(102, 153, 145, 0.15)", color: "var(--ash-grey-400)" }}>
+                                  Planta
+                                </span>
+                              )}
+                              {vehicleMap.get(event.vehicle_id)?.vehicle_code && (
+                                <TruncatedText
+                                  text={vehicleMap.get(event.vehicle_id)!.vehicle_code!}
+                                  setTip={setActionTip}
+                                  className="text-[10px]"
+                                  style={{ color: "var(--graphite-500)" }}
+                                />
+                              )}
+                            </span>
+                          )}
                         </td>
                         <td className="px-2 py-3">
                           <span
@@ -495,7 +518,7 @@ export default function RecordsPage() {
                             style={{ color: "var(--graphite-300)" }}
                           />
                         </td>
-                        <td className="px-2 py-3 text-right font-semibold tabular-nums whitespace-nowrap" style={{ color: "var(--graphite-100)" }}>${event.repair_cost.toLocaleString("es-ES")}</td>
+                        <td className="px-2 py-3 text-right font-semibold tabular-nums whitespace-nowrap" style={{ color: event.repair_cost != null ? "var(--graphite-100)" : "var(--graphite-500)" }}>{formatMoney(event.repair_cost)}</td>
                         <td className="px-2 py-3 hidden xl:table-cell">
                           {event.edited_at ? (
                             <span

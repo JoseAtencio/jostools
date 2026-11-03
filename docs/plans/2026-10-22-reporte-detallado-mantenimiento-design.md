@@ -87,6 +87,15 @@ Correccion en `indicatorService`:
 - `getMTBFMTTRTrend` aplica la misma regla.
 - Se agrega `formatIndicator(valor, sufijo)` que nunca imprime `NaN` y se usa en el PDF detallado, el modal del reporte, el PDF mensual, el Excel de eventos y la vista de informes.
 
+## Cambios pedidos por el cliente
+
+- **Planta de asfalto**: nuevo campo `asset_type` (`VEHICLE` | `PLANT`) en el evento. Al elegir Planta, el campo de unidad pasa de la lista de vehiculos a un texto libre (codigo del equipo) y los catalogos de Sistema y Componente cambian a los grupos nuevos `plant_system` y `plant_component` (quemador, secador, zaranda, mezclador, filtro de mangas, elevador, banda, silo, dosificacion, caldera, compresor, generador). Los eventos de planta llevan el badge "Planta" en la tabla y el detalle; el reporte los agrupa como unidades.
+- **Codigos de unidad**: el codigo del vehiculo (`vehicle_code`) se muestra debajo de la placa en la tabla de Registros, en el detalle del evento y en el PDF (columna "Unidad" con formato `PLACA (CODIGO)`).
+- **Costo no disponible**: `repair_cost` pasa a `number | null`. Checkbox "Costo no disponible" en el alta y en el cierre del evento. Se muestra "N/D" en la tabla, el detalle, los PDF y el Excel; los totales suman solo los costos conocidos y el PDF indica cuantos eventos quedaron sin costo.
+- **Conclusiones**: son automaticas (reglas sobre los datos, sin IA). En el Informe mensual se pueden editar antes de exportar; en el reporte detallado se generan solas.
+
+## Riesgos
+
 - `html2canvas` requiere que las graficas esten montadas y con tamano: el area de impresion oculta cumple ambas condiciones (tiene layout, no usa `display:none`).
 - Los identificadores de html2canvas no admiten caracteres especiales fuera del rango latin1: el texto del PDF pasa por `safeText`, que quita diacriticos y caracteres no soportados.
 - Mezclar orientaciones en jsPDF se hace con `addPage("a4", "landscape")`; la tabla de detalle queda al final para no volver a vertical. El pie de pagina lee `doc.internal.pageSize` de cada pagina, asi que respeta la orientacion real.

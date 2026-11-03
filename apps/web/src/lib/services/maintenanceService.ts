@@ -90,7 +90,7 @@ export function formatHistoryValue(field: string, value: unknown): string {
     return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
   }
   if (field === "effective_work_hours") return `${value} h`;
-  if (field === "repair_cost") return `$${Number(value).toLocaleString("es-ES")}`;
+  if (field === "repair_cost") return value === null || value === undefined || value === "" ? "N/D" : `$${Number(value).toLocaleString("es-ES")}`;
   return String(value);
 }
 
@@ -140,7 +140,7 @@ export async function reopenMaintenanceEvent(event: MaintenanceEvent, editorName
     status: "PENDING",
     workshop_exit_time: null,
     effective_work_hours: null,
-    repair_cost: 0,
+    repair_cost: null,
     block_reason: "",
     edited_at: entry.at,
     edited_by: editorName,
@@ -210,7 +210,8 @@ export function exportEventsToExcel(events: MaintenanceEvent[], indicators: { mt
 
   const rows = events.map((e) => ({
     "ID": e.id,
-    "Vehiculo": e.vehicle_id,
+    "Unidad": e.vehicle_id,
+    "Tipo de activo": e.asset_type === "PLANT" ? "Planta de asfalto" : "Vehiculo",
     "Odometro (km)": e.current_odometer,
     "Tipo de evento": EVENT_TYPE_LABELS[e.event_type],
     "Fecha de falla": new Date(e.failure_timestamp).toLocaleDateString("es-CO"),
@@ -221,14 +222,14 @@ export function exportEventsToExcel(events: MaintenanceEvent[], indicators: { mt
     "Componente": e.component_id,
     "Accion tomada": ACTION_TYPE_LABELS[e.action_taken],
     "Causa raiz": e.root_cause ? ROOT_CAUSE_LABELS[e.root_cause] : "",
-    "Costo de reparacion": e.repair_cost,
+    "Costo de reparacion": e.repair_cost ?? "N/D",
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
   ws["!cols"] = [
-    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 28 },
+    { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 28 },
     { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 12 },
-    { wch: 14 }, { wch: 22 }, { wch: 24 }, { wch: 22 }, { wch: 18 },
+    { wch: 22 }, { wch: 24 }, { wch: 22 }, { wch: 18 }, { wch: 18 },
   ];
   XLSX.utils.book_append_sheet(wb, ws, "Eventos");
 

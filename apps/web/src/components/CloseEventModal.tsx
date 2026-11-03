@@ -20,6 +20,7 @@ interface CloseEventModalProps {
 export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEventModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [costUnavailable, setCostUnavailable] = useState(false);
 
   const now = new Date();
   const localNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -58,7 +59,7 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
         action_taken: formData.action_taken,
         root_cause: formData.root_cause || null,
         effective_work_hours: formData.effective_work_hours ? parseFloat(formData.effective_work_hours) : null,
-        repair_cost: parseFloat(formData.repair_cost) || 0,
+        repair_cost: costUnavailable ? null : parseFloat(formData.repair_cost) || 0,
         component_id: formData.component_id,
         status: "COMPLETED",
       });
@@ -90,7 +91,7 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
         </div>
 
         <div className="mb-4 p-3 rounded-xl text-xs space-y-1" style={{ backgroundColor: "var(--graphite-800)" }}>
-          <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>Vehiculo:</span> {event.vehicle_id}</div>
+          <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>{event.asset_type === "PLANT" ? "Equipo / Planta:" : "Vehiculo:"}</span> {event.vehicle_id}</div>
           <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>Falla:</span> {failureDate.toLocaleDateString("es-ES")} {failureDate.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</div>
           <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>Entrada:</span> {entryDate.toLocaleDateString("es-ES")} {entryDate.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</div>
         </div>
@@ -148,9 +149,13 @@ export default function CloseEventModal({ event, onSuccess, onCancel }: CloseEve
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--graphite-300)" }}>
                 Costo Reparacion
-                <HelpTip title="Costo (opcional)" text="Costo final de la reparacion en la moneda local (repuestos + mano de obra). Ej: 1500.00. Se suma al costo total del evento en las graficas del dashboard." />
+                <HelpTip title="Costo (opcional)" text="Costo final de la reparacion en la moneda local (repuestos + mano de obra). Ej: 1500.00. Si el costo todavia no se conoce, marca 'Costo no disponible': el evento se cierra igual y en los reportes se muestra N/D, sin sumar al costo total." />
               </label>
-              <input type="number" name="repair_cost" value={formData.repair_cost} onChange={handleChange} placeholder="0.00" step="any" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none" style={inputStyle} />
+              <input type="number" name="repair_cost" value={costUnavailable ? "" : formData.repair_cost} onChange={handleChange} placeholder={costUnavailable ? "No disponible" : "0.00"} step="any" disabled={costUnavailable} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50" style={inputStyle} />
+              <label className="mt-2 inline-flex items-center gap-2 text-xs cursor-pointer" style={{ color: "var(--graphite-400)" }}>
+                <input type="checkbox" checked={costUnavailable} onChange={(e) => setCostUnavailable(e.target.checked)} style={{ accentColor: "var(--tuscan-sun-500)" }} />
+                Costo no disponible
+              </label>
             </div>
           </div>
 

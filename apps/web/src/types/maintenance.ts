@@ -1,5 +1,6 @@
 export type EventType = "CORRECTIVE" | "PREVENTIVE" | "INSPECTION" | "PREDICTIVE";
 export type ActionType = "REPAIRED" | "REPLACED" | "ADJUSTED";
+export type AssetType = "VEHICLE" | "PLANT";
 export type SystemCategory = "ENGINE" | "TRANSMISSION" | "BRAKES" | "ELECTRICAL" | "TIRES" | "SUSPENSION" | "OTHER";
 export type RootCause = "WEAR_AND_TEAR" | "OPERATOR_ERROR" | "PART_DEFECT" | "ACCIDENT";
 export type EventStatus = "PENDING" | "COMPLETED";
@@ -20,6 +21,7 @@ export interface EditHistoryEntry {
 export interface MaintenanceEvent {
   id: string;
   vehicle_id: string;
+  asset_type?: AssetType;
   current_odometer: number | null;
   event_type: EventType;
   failure_timestamp: string;
@@ -30,7 +32,7 @@ export interface MaintenanceEvent {
   component_id: string;
   action_taken: ActionType;
   root_cause: RootCause | null;
-  repair_cost: number;
+  repair_cost: number | null;
   created_at: string;
   user_id: string;
   status: EventStatus;
@@ -86,6 +88,21 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   COMPLETED: "Cerrado",
 };
 
+export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
+  VEHICLE: "Vehiculo",
+  PLANT: "Planta de asfalto",
+};
+
+export const ASSET_UNIT_LABEL: Record<AssetType, string> = {
+  VEHICLE: "Vehiculo",
+  PLANT: "Equipo / Planta",
+};
+
+export function formatMoney(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "N/D";
+  return `$${value.toLocaleString("es-ES")}`;
+}
+
 export const BLOCK_REASON_OPTIONS = [
   { name: "", label: "Sin bloqueo" },
   { name: "FALTA_REPUESTO", label: "Falta repuesto" },
@@ -103,6 +120,7 @@ export const BLOCK_REASON_LABELS: Record<string, string> = {
 
 export const FIELD_LABELS: Record<string, string> = {
   status: "Estado",
+  asset_type: "Tipo de activo",
   current_odometer: "Odometro",
   event_type: "Tipo de evento",
   failure_timestamp: "Fecha de falla",

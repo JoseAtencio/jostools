@@ -11,7 +11,8 @@ import { useRouter } from "next/navigation";
 import SearchableSelect from "@/components/SearchableSelect";
 import VehicleCombobox from "@/components/VehicleCombobox";
 import HelpTip from "@/components/HelpTip";
-import type { EventType, ActionType, SystemCategory, RootCause, MaintenanceEventInput } from "@/types/maintenance";
+import type { EventType, ActionType, SystemCategory, RootCause, MaintenanceEventInput, AssetType } from "@/types/maintenance";
+import { ASSET_TYPE_LABELS, ASSET_UNIT_LABEL } from "@/types/maintenance";
 import type { Category, CategoryGroup } from "@/types/categories";
 
 const inputStyle = {
@@ -34,6 +35,7 @@ function toLocalDatetimeValue(date: Date): string {
 function createInitialFormData() {
   const now = toLocalDatetimeValue(new Date());
   return {
+    asset_type: "VEHICLE" as AssetType,
     vehicle_id: "",
     current_odometer: "",
     event_type: "",
@@ -70,6 +72,7 @@ export default function MaintenanceForm() {
   const [dirty, setDirty] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
   const [closedNow, setClosedNow] = useState(true);
+  const [costUnavailable, setCostUnavailable] = useState(false);
 
   const [categories, setCategories] = useState<Record<CategoryGroup, Category[]>>({
     event_type: [],
@@ -77,13 +80,15 @@ export default function MaintenanceForm() {
     component: [],
     action_taken: [],
     root_cause: [],
+    plant_system: [],
+    plant_component: [],
   });
 
   const [initialFormData] = useState(createInitialFormData);
   const [formData, setFormData] = useState(initialFormData);
 
   useEffect(() => {
-    const groups: CategoryGroup[] = ["event_type", "system_category", "component", "action_taken", "root_cause"];
+    const groups: CategoryGroup[] = ["event_type", "system_category", "component", "action_taken", "root_cause", "plant_system", "plant_component"];
     (async () => {
       try {
         const results = await Promise.all(groups.map((group) => getCategoriesByGroup(group)));
@@ -189,6 +194,19 @@ export default function MaintenanceForm() {
     updateField(name, value);
   };
 
+  const handleAssetTypeChange = (type: AssetType) => {
+    if (type === formData.asset_type) return;
+    const next = { ...formData, asset_type: type, vehicle_id: "", system_category: "", component_id: "" };
+    setFormData(next);
+    setDirty(JSON.stringify(next) !== JSON.stringify(initialFormData));
+    setFieldErrors((prev) => {
+      const nx = { ...prev };
+      ["vehicle_id", "system_category", "component_id"].forEach((key) => delete nx[key]);
+      return nx;
+    });
+    setFocusRequest((n) => n + 1);
+  };
+
   const handleCreateCategory = async (group: CategoryGroup, field: string, text: string) => {
     const cat = await createCategoryOption(group, text);
     setCategories((prev) =>
@@ -239,7 +257,7 @@ export default function MaintenanceForm() {
       else if (odo < 0) errors.current_odometer = "El odometro no puede ser negativo";
     }
     if (formData.effective_work_hours && parseFloat(formData.effective_work_hours) < 0) errors.effective_work_hours = "Las horas no pueden ser negativas";
-    if (formData.repair_cost && parseFloat(formData.repair_cost) < 0) errors.repair_cost = "El costo no puede ser negativo";
+    if (!costUnavailable && formData.repair_cost && parseFloat(formData.repair_cost) < 0) errors.repair_cost = "El costo no puede ser negativo";
     return errors;
   };
 
@@ -260,18 +278,19 @@ export default function MaintenanceForm() {
     try {
       const event: MaintenanceEventInput = {
         vehicle_id: normalizedVehicleId,
+        asset_type: formData.asset_type,
         current_odometer: formData.current_odometer.trim() ? parseFloat(formData.current_odometer) : null,
         event_type: formData.event_type as EventType,
         failure_timestamp: formData.failure_timestamp,
         workshop_entry_time: formData.workshop_entry_time,
         workshop_exit_time: closedNow ? formData.workshop_exit_time : "",
         status: closedNow ? "COMPLETED" : "PENDING",
-        effective_work_hours: formData.effective_work_hours ? parseFloat(formData.effective_work_hours) : null,
+        effective_work_hours: closedNow && formData.effective_work_hours ? parseFloat(formData.effective_work_hours) : null,
         system_category: formData.system_category as SystemCategory,
         component_id: formData.component_id,
         action_taken: formData.action_taken as ActionType,
         root_cause: formData.root_cause ? (formData.root_cause as RootCause) : null,
-        repair_cost: parseFloat(formData.repair_cost) || 0,
+        repair_cost: !closedNow || costUnavailable ? null : parseFloat(formData.repair_cost) || 0,
         observation: formData.observation.trim(),
         user_id: user?.uid || "",
         enterpriseId: user?.enterpriseId || "",
@@ -294,6 +313,7 @@ export default function MaintenanceForm() {
     setSavedId(null);
     setDirty(false);
     setClosedNow(true);
+    setCostUnavailable(false);
     setFocusRequest((n) => n + 1);
   };
 
@@ -303,6 +323,9 @@ export default function MaintenanceForm() {
   };
 
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+  const isPlant = formData.asset_type === "PLANT";
+  const systemGroup: CategoryGroup = isPlant ? "plant_system" : "system_category";
+  const componentGroup: CategoryGroup = isPlant ? "plant_component" : "component";
   const bannerMessage = error ?? (hasFieldErrors ? "Revisa los campos marcados" : null);
 
   const errorStyle = (field: string) =>
@@ -368,21 +391,68 @@ export default function MaintenanceForm() {
         </div>
       )}
 
+      {/* Tipo de activo */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+          Tipo de activo *
+          <HelpTip title="Tipo de activo" text="Elige 'Vehiculo' para la flota o 'Planta de asfalto' para los equipos de la planta. Al cambiar el tipo, los catalogos de Sistema afectado y Componente cambian: los vehiculos usan motor, frenos, electrico... y la planta usa quemador, secador, zaranda, mezclador, etc." />
+        </label>
+        <div className="inline-flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--graphite-700)" }}>
+          {(["VEHICLE", "PLANT"] as AssetType[]).map((type) => {
+            const active = formData.asset_type === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleAssetTypeChange(type)}
+                className="px-4 py-2 text-sm font-medium cursor-pointer transition-colors"
+                style={{
+                  backgroundColor: active ? "var(--tuscan-sun-500)" : "var(--graphite-800)",
+                  color: active ? "var(--graphite-950)" : "var(--graphite-300)",
+                }}
+              >
+                {ASSET_TYPE_LABELS[type]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Vehiculo y Odometro */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
-            ID Vehiculo (Placa/VIN) *
-            <HelpTip title="Vehiculo (obligatorio)" text="Identificacion unica del vehiculo. Escriba la placa (ej: ABC-123) o el VIN y seleccione de la lista. Si el vehiculo no existe en el catalogo, use la opcion '+ Guardar vehiculo' para registrarlo. La placa se guarda tal como aparece en el catalogo y es la clave con la que se relacionan todos sus eventos." />
-          </label>
-          <VehicleCombobox
-            value={formData.vehicle_id}
-            onChange={(v) => handleSelectChange("vehicle_id", v)}
-            enterpriseId={user?.enterpriseId ?? null}
-            placeholder="Ej: ABC-123"
-            inputRef={vehicleInputRef}
-            name="vehicle_id"
-          />
+          {isPlant ? (
+            <>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+                {ASSET_UNIT_LABEL.PLANT} *
+                <HelpTip title="Equipo / Planta (obligatorio)" text="Codigo o nombre del equipo de la planta de asfalto (ej: PLANTA-01, SECADOR-1). Es la clave con la que se relacionan todos los eventos de esa unidad, igual que la placa en los vehiculos." />
+              </label>
+              <input
+                type="text"
+                name="vehicle_id"
+                value={formData.vehicle_id}
+                onChange={handleChange}
+                placeholder="Ej: PLANTA-01"
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
+                style={errorStyle("vehicle_id")}
+              />
+            </>
+          ) : (
+            <>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
+                ID Vehiculo (Placa/VIN) *
+                <HelpTip title="Vehiculo (obligatorio)" text="Identificacion unica del vehiculo. Escriba la placa (ej: ABC-123) o el VIN y seleccione de la lista. Si el vehiculo no existe en el catalogo, use la opcion '+ Guardar vehiculo' para registrarlo. La placa se guarda tal como aparece en el catalogo y es la clave con la que se relacionan todos sus eventos." />
+              </label>
+              <VehicleCombobox
+                value={formData.vehicle_id}
+                onChange={(v) => handleSelectChange("vehicle_id", v)}
+                enterpriseId={user?.enterpriseId ?? null}
+                placeholder="Ej: ABC-123"
+                inputRef={vehicleInputRef}
+                name="vehicle_id"
+              />
+            </>
+          )}
           {fieldError("vehicle_id")}
         </div>
         <div>
@@ -504,14 +574,16 @@ export default function MaintenanceForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         <div>
           <SearchableSelect
-            label="Sistema Afectado"
-            helpText="Area o sistema del vehiculo donde ocurrio la falla (ej: Frenos, Motor, Sistema electrico). Obligatorio. Permite agrupar las fallas por zona del vehiculo y ver en el dashboard que sistemas fallan mas seguido."
+            label={isPlant ? "Sistema de la planta" : "Sistema Afectado"}
+            helpText={isPlant
+              ? "Sistema de la planta de asfalto donde ocurrio la falla (quemador, secador, zaranda, mezclador, filtro de mangas...). Obligatorio. Agrupa las fallas de la planta y alimenta las graficas por sistema."
+              : "Area o sistema del vehiculo donde ocurrio la falla (ej: Frenos, Motor, Sistema electrico). Obligatorio. Permite agrupar las fallas por zona del vehiculo y ver en el dashboard que sistemas fallan mas seguido."}
             value={formData.system_category}
-            options={categories.system_category.map((c) => ({ name: c.name, label: c.label }))}
+            options={categories[systemGroup].map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("system_category", v)}
-            onCreateNew={(text) => handleCreateCategory("system_category", "system_category", text)}
-            onRemove={(name) => handleRemoveCategory("system_category", "system_category", name)}
-            placeholder={catsLoading ? "Cargando..." : "Seleccionar sistema..."}
+            onCreateNew={(text) => handleCreateCategory(systemGroup, "system_category", text)}
+            onRemove={(name) => handleRemoveCategory(systemGroup, "system_category", name)}
+            placeholder={catsLoading ? "Cargando..." : isPlant ? "Seleccionar sistema de planta..." : "Seleccionar sistema..."}
             required
             disabled={catsLoading}
           />
@@ -519,14 +591,16 @@ export default function MaintenanceForm() {
         </div>
         <div>
           <SearchableSelect
-            label="Componente"
-            helpText="Parte especifica dentro del sistema afectado (ej: pastillas de freno, alternador, bomba de agua). Obligatorio. Mientras mas especifico, mas util es el historial para decidir que repuestos conviene tener en stock."
+            label={isPlant ? "Componente de la planta" : "Componente"}
+            helpText={isPlant
+              ? "Parte especifica del sistema de planta (ej: boquilla del quemador, bomba de asfalto, rodamiento, malla de zaranda). Obligatorio. Mientras mas especifico, mas util es el historial para repuestos."
+              : "Parte especifica dentro del sistema afectado (ej: pastillas de freno, alternador, bomba de agua). Obligatorio. Mientras mas especifico, mas util es el historial para decidir que repuestos conviene tener en stock."}
             value={formData.component_id}
-            options={categories.component.map((c) => ({ name: c.name, label: c.label }))}
+            options={categories[componentGroup].map((c) => ({ name: c.name, label: c.label }))}
             onChange={(v) => handleSelectChange("component_id", v)}
-            onCreateNew={(text) => handleCreateCategory("component", "component_id", text)}
-            onRemove={(name) => handleRemoveCategory("component", "component_id", name)}
-            placeholder={catsLoading ? "Cargando..." : "Seleccionar componente..."}
+            onCreateNew={(text) => handleCreateCategory(componentGroup, "component_id", text)}
+            onRemove={(name) => handleRemoveCategory(componentGroup, "component_id", name)}
+            placeholder={catsLoading ? "Cargando..." : isPlant ? "Seleccionar componente de planta..." : "Seleccionar componente..."}
             required
             disabled={catsLoading}
           />
@@ -595,14 +669,24 @@ export default function MaintenanceForm() {
           <input
             type="number"
             name="repair_cost"
-            value={formData.repair_cost}
+            value={costUnavailable ? "" : formData.repair_cost}
             onChange={handleChange}
-            placeholder="0.00"
+            placeholder={costUnavailable ? "No disponible" : "0.00"}
             step="any"
-            disabled={!closedNow}
+            disabled={!closedNow || costUnavailable}
             className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
             style={errorStyle("repair_cost")}
           />
+          <label className="mt-2 inline-flex items-center gap-2 text-xs cursor-pointer" style={{ color: closedNow ? "var(--graphite-400)" : "var(--graphite-600)" }}>
+            <input
+              type="checkbox"
+              checked={costUnavailable}
+              onChange={(e) => setCostUnavailable(e.target.checked)}
+              disabled={!closedNow}
+              style={{ accentColor: "var(--tuscan-sun-500)" }}
+            />
+            Costo no disponible
+          </label>
           {fieldError("repair_cost")}
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { reopenMaintenanceEvent } from "@/lib/services/maintenanceService";
 import { useAppSelector } from "@/lib/redux/hooks";
 import type { MaintenanceEvent } from "@/types/maintenance";
+import { formatMoney } from "@/types/maintenance";
 
 interface ReopenEventModalProps {
   event: MaintenanceEvent;
@@ -52,7 +53,7 @@ export default function ReopenEventModal({ event, onSuccess, onCancel }: ReopenE
           <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>Vehiculo:</span> {event.vehicle_id}</div>
           <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>Estado actual:</span> Cerrado</div>
           {event.workshop_exit_time && (
-            <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>Se limpiara:</span> salida, horas ({event.effective_work_hours ?? "--"} h) y costo (${event.repair_cost.toLocaleString("es-ES")})</div>
+            <div style={{ color: "var(--graphite-400)" }}><span style={{ color: "var(--graphite-200)" }}>Se limpiara:</span> salida, horas ({event.effective_work_hours ?? "--"} h) y costo ({formatMoney(event.repair_cost)})</div>
           )}
         </div>
 

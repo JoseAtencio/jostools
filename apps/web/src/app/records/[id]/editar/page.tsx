@@ -30,6 +30,7 @@ function toLocalDatetimeValue(date: Date): string {
 function mapEventToForm(ev: MaintenanceEvent) {
   return {
     vehicle_id: ev.vehicle_id,
+    asset_type: (ev.asset_type ?? "VEHICLE") as string,
     current_odometer: String(ev.current_odometer ?? ""),
     event_type: ev.event_type,
     failure_timestamp: toLocalDatetimeValue(new Date(ev.failure_timestamp)),
@@ -66,10 +67,13 @@ export default function EditEventPage() {
     component: [],
     action_taken: [],
     root_cause: [],
+    plant_system: [],
+    plant_component: [],
   });
 
   const [formData, setFormData] = useState({
     vehicle_id: "",
+    asset_type: "VEHICLE" as string,
     current_odometer: "",
     event_type: "",
     failure_timestamp: "",
@@ -83,7 +87,7 @@ export default function EditEventPage() {
   });
 
   useEffect(() => {
-    const groups: CategoryGroup[] = ["event_type", "system_category", "component", "action_taken", "root_cause"];
+    const groups: CategoryGroup[] = ["event_type", "system_category", "component", "action_taken", "root_cause", "plant_system", "plant_component"];
     (async () => {
       try {
         const results = await Promise.all(groups.map((group) => getCategoriesByGroup(group)));
@@ -226,6 +230,10 @@ export default function EditEventPage() {
       <p className="text-xs mt-1" style={{ color: "var(--raspberry-red-400)" }}>{fieldErrors[name]}</p>
     ) : null;
 
+  const isPlant = formData.asset_type === "PLANT";
+  const systemGroup: CategoryGroup = isPlant ? "plant_system" : "system_category";
+  const componentGroup: CategoryGroup = isPlant ? "plant_component" : "component";
+
   const errorStyle = (name: string) => ({
     ...inputStyle,
     borderColor: fieldErrors[name] ? "var(--raspberry-red-500)" : "var(--graphite-600)",
@@ -314,8 +322,8 @@ export default function EditEventPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
-                    Vehiculo
-                    <HelpTip title="Vehiculo (no editable)" text="El vehiculo asignado al evento no se puede cambiar. Si necesitas corregirlo, borra el evento y crea uno nuevo." />
+                    {isPlant ? "Equipo / Planta" : "Vehiculo"}
+                    <HelpTip title="Unidad (no editable)" text="La unidad asignada al evento no se puede cambiar. Si necesitas corregirla, borra el evento y crea uno nuevo." />
                   </label>
                   <input
                     type="text"
@@ -324,6 +332,9 @@ export default function EditEventPage() {
                     className="w-full px-4 py-3 rounded-xl text-sm opacity-60 cursor-not-allowed"
                     style={{ ...inputStyle, opacity: 0.6 }}
                   />
+                  <p className="text-xs mt-1.5" style={{ color: "var(--graphite-500)" }}>
+                    Tipo de activo: {isPlant ? "Planta de asfalto" : "Vehiculo"}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
@@ -393,14 +404,16 @@ export default function EditEventPage() {
 
               <div className="mb-6">
                 <SearchableSelect
-                  label="Sistema Afectado"
-                  helpText="Area o sistema del vehiculo donde ocurrio la falla (ej: Frenos, Motor, Sistema electrico). Obligatorio."
+                  label={isPlant ? "Sistema de la planta" : "Sistema Afectado"}
+                  helpText={isPlant
+                    ? "Sistema de la planta de asfalto donde ocurrio la falla (quemador, secador, zaranda, mezclador, filtro de mangas...). Obligatorio."
+                    : "Area o sistema del vehiculo donde ocurrio la falla (ej: Frenos, Motor, Sistema electrico). Obligatorio."}
                   value={formData.system_category}
-                  options={selectOptions(categories.system_category, formData.system_category)}
+                  options={selectOptions(categories[systemGroup], formData.system_category)}
                   onChange={(v) => updateField("system_category", v)}
-                  onCreateNew={(text) => handleCreateCategory("system_category", "system_category", text)}
-                  onRemove={(name) => handleRemoveCategory("system_category", "system_category", name)}
-                  placeholder={catsLoading ? "Cargando..." : "Seleccionar sistema..."}
+                  onCreateNew={(text) => handleCreateCategory(systemGroup, "system_category", text)}
+                  onRemove={(name) => handleRemoveCategory(systemGroup, "system_category", name)}
+                  placeholder={catsLoading ? "Cargando..." : isPlant ? "Seleccionar sistema de planta..." : "Seleccionar sistema..."}
                   required
                   disabled={catsLoading}
                 />
@@ -409,14 +422,16 @@ export default function EditEventPage() {
 
               <div className="mb-6">
                 <SearchableSelect
-                  label="Componente"
-                  helpText="Parte especifica dentro del sistema afectado (ej: pastillas de freno, alternador). Obligatorio."
+                  label={isPlant ? "Componente de la planta" : "Componente"}
+                  helpText={isPlant
+                    ? "Parte especifica del sistema de planta (ej: boquilla del quemador, bomba de asfalto, rodamiento). Obligatorio."
+                    : "Parte especifica dentro del sistema afectado (ej: pastillas de freno, alternador). Obligatorio."}
                   value={formData.component_id}
-                  options={selectOptions(categories.component, formData.component_id)}
+                  options={selectOptions(categories[componentGroup], formData.component_id)}
                   onChange={(v) => updateField("component_id", v)}
-                  onCreateNew={(text) => handleCreateCategory("component", "component_id", text)}
-                  onRemove={(name) => handleRemoveCategory("component", "component_id", name)}
-                  placeholder={catsLoading ? "Cargando..." : "Seleccionar componente..."}
+                  onCreateNew={(text) => handleCreateCategory(componentGroup, "component_id", text)}
+                  onRemove={(name) => handleRemoveCategory(componentGroup, "component_id", name)}
+                  placeholder={catsLoading ? "Cargando..." : isPlant ? "Seleccionar componente de planta..." : "Seleccionar componente..."}
                   required
                   disabled={catsLoading}
                 />
@@ -527,7 +542,7 @@ export default function EditEventPage() {
                 setFormData(mapEventToForm(ev));
               }
             } catch {
-              const reopened: MaintenanceEvent = { ...event, status: "PENDING", workshop_exit_time: "", effective_work_hours: null, repair_cost: 0, block_reason: "" };
+              const reopened: MaintenanceEvent = { ...event, status: "PENDING", workshop_exit_time: "", effective_work_hours: null, repair_cost: null, block_reason: "" };
               setEvent(reopened);
               setFormData(mapEventToForm(reopened));
             }

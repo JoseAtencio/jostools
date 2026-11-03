@@ -8,13 +8,16 @@ import {
   SYSTEM_CATEGORY_LABELS,
   ROOT_CAUSE_LABELS,
   EVENT_STATUS_LABELS,
+  formatMoney,
 } from "@/types/maintenance";
 import type { ReportSummary } from "./detailedReportService";
 import { formatIndicator } from "./indicatorService";
+import type { Vehicle } from "@/types/vehicle";
 
 export interface DetailedReportParams {
   events: MaintenanceEvent[];
   summary: ReportSummary;
+  vehicles: Vehicle[];
   rangeLabel: string;
   chartsElement: HTMLElement | null;
   topVehiclesElement: HTMLElement | null;
@@ -72,14 +75,14 @@ function buildConclusions(summary: ReportSummary, rangeLabel: string): string {
     parts.push(`Los sistemas con mayor incidencia fueron: ${summary.bySystem.slice(0, 3).map((s) => `${s.label} (${s.count})`).join(", ")}.`);
   }
   if (summary.byVehicle.length > 0) {
-    parts.push(`Los vehiculos con mas eventos fueron: ${summary.byVehicle.slice(0, 3).map((v) => `${v.label} (${v.count})`).join(", ")}.`);
+    parts.push(`Las unidades con mas eventos fueron: ${summary.byVehicle.slice(0, 3).map((v) => `${v.label} (${v.count})`).join(", ")}.`);
   }
   return parts.join(" ");
 }
 
-function eventRow(e: MaintenanceEvent): string[] {
+function eventRow(e: MaintenanceEvent, unitLabel: string): string[] {
   return [
-    e.vehicle_id,
+    unitLabel,
     EVENT_TYPE_SHORT_LABELS[e.event_type] ?? e.event_type,
     EVENT_STATUS_LABELS[e.status || "PENDING"],
     shortDate(e.failure_timestamp),
@@ -90,7 +93,7 @@ function eventRow(e: MaintenanceEvent): string[] {
     e.component_id || "--",
     ACTION_TYPE_LABELS[e.action_taken] ?? e.action_taken,
     e.root_cause ? ROOT_CAUSE_LABELS[e.root_cause] ?? e.root_cause : "--",
-    `$${(e.repair_cost || 0).toLocaleString("es-ES")}`,
+    formatMoney(e.repair_cost),
   ];
 }
 
@@ -285,7 +288,7 @@ function drawGlossaryPage(doc: jsPDF, summary: ReportSummary): void {
     ["Eventos por mes", "Cuantos eventos se registraron en cada mes; muestra si la carga de taller sube o baja."],
     ["Tendencia MTBF / MTTR", "Evolucion mensual de la confiabilidad y de la eficiencia de las reparaciones."],
     ["Costos por categoria", "En que sistema del vehiculo se concentra el gasto de las reparaciones."],
-    ["Top vehiculos con mas fallas", "Que vehiculos requieren atencion: son el punto de partida del plan preventivo."],
+    ["Top unidades con mas fallas", "Que vehiculos requieren atencion: son el punto de partida del plan preventivo."],
   ];
   chartNotes.forEach(([title, text]) => {
     doc.setFontSize(8.6);
@@ -302,11 +305,17 @@ function drawGlossaryPage(doc: jsPDF, summary: ReportSummary): void {
 export async function exportDetailedReport({
   events,
   summary,
+  vehicles,
   rangeLabel,
   chartsElement,
   topVehiclesElement,
 }: DetailedReportParams): Promise<void> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const vehicleMap = new Map(vehicles.map((v) => [v.vehicle_id, v]));
+  const unitLabelOf = (vehicleId: string) => {
+    const code = vehicleMap.get(vehicleId)?.vehicle_code;
+    return code ? `${vehicleId} (${code})` : vehicleId;
+  };
 
   doc.setFontSize(18);
   doc.setTextColor(INK[0], INK[1], INK[2]);
@@ -332,13 +341,13 @@ export async function exportDetailedReport({
   y = drawKpiGrid(
     doc,
     [
-      { label: "Eventos", value: String(summary.total), hint: `${summary.byVehicle.length} vehiculo(s)` },
+      { label: "Eventos", value: String(summary.total), hint: `${summary.byVehicle.length} unidad(es)` },
       { label: "MTBF", value: formatIndicator(summary.indicators.mtbf, " h"), hint: "Horas entre fallas" },
       { label: "MTTR", value: formatIndicator(summary.indicators.mttr, " h"), hint: "Horas de reparacion" },
       { label: "MTTF", value: formatIndicator(summary.indicators.mttf, " h"), hint: "Vida util de piezas" },
       { label: "Disponibilidad", value: formatIndicator(summary.indicators.availability, "%"), hint: "Tiempo operativo" },
       { label: "Horas de taller", value: `${summary.hoursTotal.toFixed(1)} h`, hint: "Trabajo efectivo" },
-      { label: "Costo total", value: `$${summary.costTotal.toLocaleString("es-ES")}`, hint: "Reparaciones" },
+      { label: "Costo total", value: `$${summary.costTotal.toLocaleString("es-ES")}`, hint: summary.costUnknown > 0 ? `${summary.costUnknown} sin costo` : "Reparaciones" },
       { label: "Costo promedio", value: `$${Math.round(avgCost).toLocaleString("es-ES")}`, hint: "Por evento" },
     ],
     y
@@ -390,7 +399,7 @@ export async function exportDetailedReport({
   }
 
   doc.addPage();
-  let page3Y = drawSectionTitle(doc, "Vehiculos con mas eventos", 22);
+  let page3Y = drawSectionTitle(doc, "Unidades con mas eventos", 22);
   const topImg = await capture(topVehiclesElement);
   if (topImg) {
     const props = doc.getImageProperties(topImg);
@@ -408,9 +417,9 @@ export async function exportDetailedReport({
   );
   page3Y = drawSummaryTable(
     doc,
-    "Eventos por vehiculo",
-    ["Vehiculo", "Eventos", "Costo"],
-    summary.byVehicle.map((v) => [safeText(v.label), String(v.count), `$${v.cost.toLocaleString("es-ES")}`]),
+    "Eventos por unidad",
+    ["Unidad", "Eventos", "Costo"],
+    summary.byVehicle.map((v) => [safeText(unitLabelOf(v.label)), String(v.count), `$${v.cost.toLocaleString("es-ES")}`]),
     page3Y,
     6
   );
@@ -442,10 +451,10 @@ export async function exportDetailedReport({
   autoTable(doc, {
     startY: 24,
     head: [[
-      "Vehiculo", "Tipo", "Estado", "Falla", "Entrada", "Salida",
+      "Unidad", "Tipo", "Estado", "Falla", "Entrada", "Salida",
       "Horas", "Categoria", "Componente", "Accion", "Causa", "Costo",
     ]],
-    body: events.map((e) => eventRow(e).map((v) => safeText(v))),
+    body: events.map((e) => eventRow(e, unitLabelOf(e.vehicle_id)).map((v) => safeText(v))),
     styles: { fontSize: 6.6, cellPadding: 1.5, overflow: "linebreak" },
     headStyles: { fillColor: [244, 244, 245] as [number, number, number], textColor: [39, 39, 42] as [number, number, number], fontStyle: "bold" },
     alternateRowStyles: { fillColor: [252, 252, 253] as [number, number, number] },
