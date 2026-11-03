@@ -97,6 +97,7 @@ export function applyReportFilters(
     !Array.from(eventUnits).every((id) => filters.vehicleIds.includes(id));
 
   return events.filter((e) => {
+    if (e.status === "DELETED") return false;
     const t = new Date(e.failure_timestamp).getTime();
     if (!Number.isNaN(t) && (t < from || t > to)) return false;
     if (filterByUnit && !filters.vehicleIds.includes(e.vehicle_id)) return false;

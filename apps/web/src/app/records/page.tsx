@@ -10,7 +10,7 @@ import ExportFormatModal from "@/components/ExportFormatModal";
 import ReportBuilderModal from "@/components/ReportBuilderModal";
 import HelpTip from "@/components/HelpTip";
 import { useAppSelector } from "@/lib/redux/hooks";
-import { getMaintenanceEvents, exportEventsToExcel } from "@/lib/services/maintenanceService";
+import { getMaintenanceEvents, exportEventsToExcel, markEventDeleted } from "@/lib/services/maintenanceService";
 import { getVehicles } from "@/lib/services/vehicleService";
 import type { Vehicle } from "@/types/vehicle";
 import { exportEventsToPdf } from "@/lib/services/pdfExportService";
@@ -180,13 +180,15 @@ export default function RecordsPage() {
     return result;
   }, [events, search, month, sortKey, sortDir]);
 
-  const allVisibleSelected = filtered.length > 0 && filtered.every((e) => selected.has(e.id));
+  const allVisibleSelected = filtered.filter((e) => e.status !== "DELETED").length > 0
+    && filtered.filter((e) => e.status !== "DELETED").every((e) => selected.has(e.id));
 
   const toggleAllVisible = () => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allVisibleSelected) filtered.forEach((e) => next.delete(e.id));
-      else filtered.forEach((e) => next.add(e.id));
+      const selectable = filtered.filter((e) => e.status !== "DELETED");
+      if (allVisibleSelected) selectable.forEach((e) => next.delete(e.id));
+      else selectable.forEach((e) => next.add(e.id));
       return next;
     });
   };
@@ -213,6 +215,22 @@ export default function RecordsPage() {
   const handleSort = (key: TableSortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("asc"); }
+  };
+
+  const handleDelete = async (event: MaintenanceEvent) => {
+    if (event.status === "DELETED") return;
+    if (!window.confirm("Marcar este registro como borrado? Se mostrara en gris y saldra de los reportes, pero no se eliminara de la base de datos. Puedes restaurarlo desde el detalle.")) return;
+    try {
+      await markEventDeleted(event.id, user?.displayName || "Usuario", event.status || "PENDING");
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(event.id);
+        return next;
+      });
+      loadData();
+    } catch {
+      alert("No se pudo marcar el registro como borrado. Intenta de nuevo.");
+    }
   };
 
   const SortIcon = ({ col }: { col: TableSortKey }) => (
@@ -390,7 +408,7 @@ export default function RecordsPage() {
                     <col />
                     <col style={{ width: 76 }} />
                     <col className="hidden xl:table-column" style={{ width: 96 }} />
-                    <col style={{ width: 108 }} />
+                    <col style={{ width: 128 }} />
                   </colgroup>
                   <thead>
                     <tr style={{ backgroundColor: "var(--graphite-900)" }}>
@@ -431,13 +449,14 @@ export default function RecordsPage() {
                     {filtered.map((event) => {
                       const isOpen = !event.status || event.status === "PENDING";
                       const isClosed = event.status === "COMPLETED";
+                      const isDeleted = event.status === "DELETED";
                       return (
                       <tr
                         key={event.id}
                         className="transition-colors cursor-pointer"
-                        style={{ borderTop: "1px solid var(--graphite-800)" }}
+                        style={{ borderTop: "1px solid var(--graphite-800)", opacity: isDeleted ? 0.45 : 1 }}
                         onClick={() => router.push(`/records/${event.id}`)}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--graphite-900)"; }}
+                        onMouseEnter={(e) => { if (!isDeleted) e.currentTarget.style.backgroundColor = "var(--graphite-900)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
                       >
                         <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
@@ -445,7 +464,8 @@ export default function RecordsPage() {
                             type="checkbox"
                             checked={selected.has(event.id)}
                             onChange={() => toggleOne(event.id)}
-                            className="cursor-pointer"
+                            disabled={isDeleted}
+                            className="cursor-pointer disabled:cursor-not-allowed"
                             style={{ accentColor: "var(--tuscan-sun-500)" }}
                           />
                         </td>
@@ -490,14 +510,15 @@ export default function RecordsPage() {
                           <span
                             className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                             style={{
-                              backgroundColor: event.status === "PENDING" ? "rgba(247, 183, 8, 0.15)" : "rgba(102, 153, 145, 0.15)",
-                              color: event.status === "PENDING" ? "var(--tuscan-sun-400)" : "var(--ash-grey-400)",
+                              backgroundColor: isDeleted ? "var(--graphite-800)" : event.status === "PENDING" ? "rgba(247, 183, 8, 0.15)" : "rgba(102, 153, 145, 0.15)",
+                              color: isDeleted ? "var(--graphite-500)" : event.status === "PENDING" ? "var(--tuscan-sun-400)" : "var(--ash-grey-400)",
                             }}
+                            title={isDeleted ? `Marcado como borrado${event.deleted_by ? ` por ${event.deleted_by}` : ""}` : undefined}
                           >
                             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "currentColor" }} />
                             {EVENT_STATUS_LABELS[event.status || "PENDING"]}
                           </span>
-                          {event.block_reason ? (
+                          {event.block_reason && !isDeleted ? (
                             <span
                               className="ml-1.5 inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap cursor-help"
                               title={`Bloqueado: ${BLOCK_REASON_LABELS[event.block_reason] ?? event.block_reason}`}
@@ -535,10 +556,10 @@ export default function RecordsPage() {
                         <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5 flex-nowrap">
                             <ActionButton
-                              enabled={isOpen}
+                              enabled={isOpen && !isDeleted}
                               label="Editar evento"
                               tipEnabled="Editar: abre el formulario para corregir los datos del evento"
-                              tipDisabled="No disponible: el evento esta cerrado. Reabrielo para editarlo."
+                              tipDisabled={isDeleted ? "No disponible: el evento esta marcado como borrado. Restauralo desde el detalle." : "No disponible: el evento esta cerrado. Reabrielo para editarlo."}
                               colors={{ bg: "rgba(0, 81, 255, 0.12)", fg: "var(--crayola-blue-400)", border: "rgba(0, 81, 255, 0.3)", hoverBg: "var(--crayola-blue-400)" }}
                               onClick={() => router.push(`/records/${event.id}/editar`)}
                               setTip={setActionTip}
@@ -546,10 +567,10 @@ export default function RecordsPage() {
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </ActionButton>
                             <ActionButton
-                              enabled={isOpen}
+                              enabled={isOpen && !isDeleted}
                               label="Cerrar evento"
                               tipEnabled="Cerrar: registra la salida del taller, horas efectivas y costo final"
-                              tipDisabled="No disponible: el evento ya esta cerrado."
+                              tipDisabled={isDeleted ? "No disponible: el evento esta marcado como borrado." : "No disponible: el evento ya esta cerrado."}
                               colors={{ bg: "rgba(102, 153, 145, 0.15)", fg: "var(--ash-grey-400)", border: "rgba(102, 153, 145, 0.3)", hoverBg: "var(--ash-grey-400)" }}
                               onClick={() => setCloseEvent(event)}
                               setTip={setActionTip}
@@ -557,15 +578,26 @@ export default function RecordsPage() {
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                             </ActionButton>
                             <ActionButton
-                              enabled={isClosed}
+                              enabled={isClosed && !isDeleted}
                               label="Reabrir evento"
                               tipEnabled="Reabrir: vuelve el evento a estado abierto para poder corregirlo"
-                              tipDisabled="No disponible: el evento sigue abierto."
+                              tipDisabled={isDeleted ? "No disponible: el evento esta marcado como borrado." : "No disponible: el evento sigue abierto."}
                               colors={{ bg: "rgba(224, 31, 95, 0.12)", fg: "var(--raspberry-red-400)", border: "rgba(224, 31, 95, 0.3)", hoverBg: "var(--raspberry-red-400)" }}
                               onClick={() => setReopenEvent(event)}
                               setTip={setActionTip}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </ActionButton>
+                            <ActionButton
+                              enabled={!isDeleted}
+                              label="Marcar como borrado"
+                              tipEnabled="Borrar: marca el registro como borrado (queda en gris y sale de los reportes, sin eliminarse de la base)"
+                              tipDisabled="Ya esta marcado como borrado"
+                              colors={{ bg: "var(--graphite-800)", fg: "var(--graphite-400)", border: "var(--graphite-700)", hoverBg: "var(--graphite-600)" }}
+                              onClick={() => handleDelete(event)}
+                              setTip={setActionTip}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </ActionButton>
                           </div>
                         </td>

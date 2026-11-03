@@ -9,7 +9,7 @@ import ReopenEventModal from "@/components/ReopenEventModal";
 import ExportFormatModal from "@/components/ExportFormatModal";
 import HelpTip from "@/components/HelpTip";
 import { useAppSelector } from "@/lib/redux/hooks";
-import { getEventById, buildEventChanges, saveEventChanges, exportEventsToExcel } from "@/lib/services/maintenanceService";
+import { getEventById, buildEventChanges, saveEventChanges, exportEventsToExcel, markEventDeleted, restoreEvent } from "@/lib/services/maintenanceService";
 import { exportEventsToPdf } from "@/lib/services/pdfExportService";
 import { calculateIndicators, formatHours } from "@/lib/services/indicatorService";
 import { getVehicleById } from "@/lib/services/vehicleService";
@@ -87,6 +87,18 @@ export default function EventDetailPage() {
     setExportOpen(false);
   };
 
+  const handleDeleteToggle = async () => {
+    if (!event) return;
+    const isDeleted = event.status === "DELETED";
+    if (!isDeleted) {
+      if (!window.confirm("Marcar este registro como borrado? Se mostrara en gris y saldra de los reportes, pero no se eliminara de la base de datos.")) return;
+      await markEventDeleted(event.id, user?.displayName || "Usuario", event.status || "PENDING");
+    } else {
+      await restoreEvent(event.id);
+    }
+    load();
+  };
+
   const handleBlockReason = async (value: string) => {
     if (!event) return;
     setBlockSaving(true);
@@ -137,6 +149,7 @@ export default function EventDetailPage() {
   }
 
   const isOpen = !event.status || event.status === "PENDING";
+  const isDeleted = event.status === "DELETED";
   const stayHours = hoursBetween(event.workshop_entry_time, event.workshop_exit_time);
 
   const items: { label: string; value: string; help?: string }[] = [
@@ -157,6 +170,7 @@ export default function EventDetailPage() {
     { label: "Horas efectivas", value: event.effective_work_hours != null ? `${event.effective_work_hours} h` : isOpen ? "Se determina al cierre" : "--", help: isOpen ? "Las horas se registran al cerrar el evento." : "Horas reales de trabajo del tecnico." },
     { label: "Costo reparacion", value: formatMoney(event.repair_cost) },
     { label: "Observacion", value: event.observation?.trim() ? event.observation : "--" },
+    ...(event.status === "DELETED" ? [{ label: "Marcado como borrado", value: event.deleted_at ? `${formatDateTime(event.deleted_at)} por ${event.deleted_by || "Usuario"}` : "Si", help: "El registro se conserva en la base de datos pero no aparece en los reportes. Puedes restaurarlo con el boton Restaurar." }] : []),
     ...(event.block_reason ? [{ label: "Motivo de bloqueo", value: BLOCK_REASON_LABELS[event.block_reason] ?? event.block_reason }] : []),
     { label: "Creado", value: formatDateTime(event.created_at) },
     ...(event.edited_at ? [{ label: "Ultima edicion", value: formatDateTime(event.edited_at), help: `Editado por ${event.edited_by || "Usuario"}. El detalle completo de los cambios esta en el historial.` }] : []),
@@ -186,8 +200,8 @@ export default function EventDetailPage() {
               </span>
             )}
             <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{
-              backgroundColor: isOpen ? "rgba(247, 183, 8, 0.15)" : "rgba(102, 153, 145, 0.15)",
-              color: isOpen ? "var(--tuscan-sun-400)" : "var(--ash-grey-400)",
+              backgroundColor: isDeleted ? "var(--graphite-800)" : isOpen ? "rgba(247, 183, 8, 0.15)" : "rgba(102, 153, 145, 0.15)",
+              color: isDeleted ? "var(--graphite-500)" : isOpen ? "var(--tuscan-sun-400)" : "var(--ash-grey-400)",
             }}>
               {EVENT_STATUS_LABELS[event.status || "PENDING"]}
             </span>
@@ -203,7 +217,7 @@ export default function EventDetailPage() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap mb-6">
-            {isOpen && (
+            {isOpen && !isDeleted && (
               <>
                 <button
                   onClick={() => router.push(`/records/${event.id}/editar`)}
@@ -223,7 +237,7 @@ export default function EventDetailPage() {
                 </button>
               </>
             )}
-            {!isOpen && (
+            {!isOpen && !isDeleted && (
               <button
                 onClick={() => setReopenOpen(true)}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
@@ -235,15 +249,30 @@ export default function EventDetailPage() {
             )}
             <button
               onClick={() => setExportOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
+              disabled={isDeleted}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: "rgba(247, 183, 8, 0.15)", color: "var(--tuscan-sun-400)", border: "1px solid rgba(247, 183, 8, 0.3)" }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Exportar
             </button>
+            <button
+              onClick={handleDeleteToggle}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
+              style={isDeleted
+                ? { backgroundColor: "rgba(102, 153, 145, 0.15)", color: "var(--ash-grey-400)", border: "1px solid rgba(102, 153, 145, 0.3)" }
+                : { backgroundColor: "var(--graphite-800)", color: "var(--graphite-300)", border: "1px solid var(--graphite-700)" }}
+            >
+              {isDeleted ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              )}
+              {isDeleted ? "Restaurar" : "Marcar como borrado"}
+            </button>
           </div>
 
-          {isOpen && (
+          {isOpen && !isDeleted && (
             <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: "var(--graphite-900)", border: "1px solid var(--graphite-800)" }}>
               <label className="block text-sm font-medium mb-2" style={{ color: "var(--graphite-300)" }}>
                 Motivo de bloqueo
