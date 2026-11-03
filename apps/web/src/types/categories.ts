@@ -12,7 +12,9 @@ export type CategoryGroup =
   | "system_category"
   | "component"
   | "action_taken"
-  | "root_cause";
+  | "root_cause"
+  | "plant_system"
+  | "plant_component";
 
 export const CATEGORY_GROUPS: Record<CategoryGroup, string> = {
   event_type: "Tipo de Evento",
@@ -20,6 +22,8 @@ export const CATEGORY_GROUPS: Record<CategoryGroup, string> = {
   component: "Componente",
   action_taken: "Accion Realizada",
   root_cause: "Causa Raiz",
+  plant_system: "Sistema de Planta",
+  plant_component: "Componente de Planta",
 };
 
 export const DEFAULT_CATEGORIES: Omit<Category, "id" | "created_at">[] = [
@@ -190,4 +194,35 @@ export const DEFAULT_CATEGORIES: Omit<Category, "id" | "created_at">[] = [
   { name: "VIBRATION", label: "Vibracion excesiva", group: "root_cause", active: true },
   { name: "OVERHEATING", label: "Sobrecalentamiento", group: "root_cause", active: true },
   { name: "UNKNOWN", label: "Desconocida", group: "root_cause", active: true },
+
+  // Plant Systems (planta de asfalto)
+  { name: "QUEMADOR", label: "Quemador", group: "plant_system", active: true },
+  { name: "SECADOR", label: "Secador / tambor secador", group: "plant_system", active: true },
+  { name: "ZARANDA", label: "Zaranda / criba", group: "plant_system", active: true },
+  { name: "MEZCLADOR", label: "Mezclador", group: "plant_system", active: true },
+  { name: "FILTRO_MANGAS", label: "Filtro de mangas", group: "plant_system", active: true },
+  { name: "ELEVADOR", label: "Elevador de asfalto", group: "plant_system", active: true },
+  { name: "BANDA", label: "Banda transportadora", group: "plant_system", active: true },
+  { name: "SILO", label: "Silo / tolva", group: "plant_system", active: true },
+  { name: "DOSIFICACION", label: "Sistema de dosificacion", group: "plant_system", active: true },
+  { name: "CALDERA", label: "Caldera de aceite termico", group: "plant_system", active: true },
+  { name: "COMPRESOR", label: "Compresor", group: "plant_system", active: true },
+  { name: "GENERADOR", label: "Generador electrico", group: "plant_system", active: true },
+  { name: "OTRO_PLANTA", label: "Otro", group: "plant_system", active: true },
+
+  // Plant Components
+  { name: "MOTOR_QUEMADOR", label: "Motor del quemador", group: "plant_component", active: true },
+  { name: "BOQUILLA", label: "Boquilla del quemador", group: "plant_component", active: true },
+  { name: "BOMBA_ASFALTO", label: "Bomba de asfalto", group: "plant_component", active: true },
+  { name: "BOMBA_ACEITE", label: "Bomba de aceite termico", group: "plant_component", active: true },
+  { name: "RODAMIENTO", label: "Rodamiento", group: "plant_component", active: true },
+  { name: "CORREA", label: "Correa", group: "plant_component", active: true },
+  { name: "CADENA", label: "Cadena", group: "plant_component", active: true },
+  { name: "REDUCTOR", label: "Reductor", group: "plant_component", active: true },
+  { name: "VALVULA", label: "Valvula", group: "plant_component", active: true },
+  { name: "MALLA", label: "Malla de zaranda", group: "plant_component", active: true },
+  { name: "MANGA", label: "Manga de filtro", group: "plant_component", active: true },
+  { name: "TERMOCUPLA", label: "Termocupla / sensor", group: "plant_component", active: true },
+  { name: "TABLERO", label: "Tablero de control", group: "plant_component", active: true },
+  { name: "OTRO_COMP", label: "Otro", group: "plant_component", active: true },
 ];

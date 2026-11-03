@@ -4,7 +4,7 @@ import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 import type { ReportData } from "./reportService";
 import { formatIndicator } from "./indicatorService";
-import { EVENT_TYPE_SHORT_LABELS, SYSTEM_CATEGORY_LABELS, EVENT_STATUS_LABELS, BLOCK_REASON_LABELS } from "@/types/maintenance";
+import { EVENT_TYPE_SHORT_LABELS, SYSTEM_CATEGORY_LABELS, EVENT_STATUS_LABELS, BLOCK_REASON_LABELS, formatMoney } from "@/types/maintenance";
 import type { MaintenanceEvent } from "@/types/maintenance";
 
 function shortDate(iso: string): string {
@@ -76,7 +76,7 @@ export async function exportReportToPdf(report: ReportData, conclusions: string,
   doc.text("Seccion 1 - Preventivos, inspecciones y predictivos", 14, s1y);
   autoTable(doc, {
     startY: s1y + 5,
-    head: [["Vehiculo", "Tipo", "Falla", "Sistema", "Estado", "Observacion"]],
+    head: [["Unidad", "Tipo", "Falla", "Sistema", "Estado", "Observacion"]],
     body: [...report.preventive, ...report.inspection, ...report.predictive].map(eventRow),
     ...tableStyles(),
   });
@@ -91,7 +91,7 @@ export async function exportReportToPdf(report: ReportData, conclusions: string,
   doc.text("Seccion 2 - Correctivos", 14, s2y);
   autoTable(doc, {
     startY: s2y + 5,
-    head: [["Vehiculo", "Tipo", "Falla", "Sistema", "Estado", "Observacion"]],
+    head: [["Unidad", "Tipo", "Falla", "Sistema", "Estado", "Observacion"]],
     body: report.corrective.map(eventRow),
     ...tableStyles(),
   });
@@ -176,14 +176,14 @@ export function exportReportToExcel(report: ReportData, conclusions: string): vo
 
   const eventRows = (list: MaintenanceEvent[]) =>
     list.map((e) => ({
-      Vehiculo: e.vehicle_id,
+      Unidad: e.vehicle_id,
       Tipo: EVENT_TYPE_SHORT_LABELS[e.event_type],
       Falla: shortDate(e.failure_timestamp),
       Entrada: shortDate(e.workshop_entry_time),
       Salida: shortDate(e.workshop_exit_time),
       Horas: e.effective_work_hours ?? "",
       Sistema: SYSTEM_CATEGORY_LABELS[e.system_category] ?? e.system_category,
-      Costo: e.repair_cost,
+      Costo: formatMoney(e.repair_cost),
       Estado: EVENT_STATUS_LABELS[e.status || "PENDING"],
       Observacion: e.observation ?? "",
     }));
@@ -196,7 +196,7 @@ export function exportReportToExcel(report: ReportData, conclusions: string): vo
     wb,
     XLSX.utils.json_to_sheet(
       report.backlog.map((e) => ({
-        Vehiculo: e.vehicle_id,
+        Unidad: e.vehicle_id,
         Estado: EVENT_STATUS_LABELS[e.status || "PENDING"],
         Motivo: e.block_reason ? BLOCK_REASON_LABELS[e.block_reason] ?? e.block_reason : "Sin bloqueo",
         Falla: shortDate(e.failure_timestamp),

@@ -129,7 +129,7 @@ export function getCostByCategoryData(events: MaintenanceEvent[]): CostData[] {
   const map = new Map<string, number>();
   events.forEach((e) => {
     const label = CATEGORY_ES[e.system_category] ?? e.system_category;
-    map.set(label, (map.get(label) ?? 0) + e.repair_cost);
+    map.set(label, (map.get(label) ?? 0) + (e.repair_cost ?? 0));
   });
   return Array.from(map.entries())
     .map(([category, costo]) => ({ category, costo, key: category }))

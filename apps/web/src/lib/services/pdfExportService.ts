@@ -7,6 +7,7 @@ import {
   SYSTEM_CATEGORY_LABELS,
   ROOT_CAUSE_LABELS,
   EVENT_STATUS_LABELS,
+  formatMoney,
 } from "@/types/maintenance";
 
 export function exportEventsToPdf(events: MaintenanceEvent[], titulo = "Reporte de Mantenimiento"): void {
@@ -35,13 +36,13 @@ export function exportEventsToPdf(events: MaintenanceEvent[], titulo = "Reporte 
     e.component_id || "--",
     ACTION_TYPE_LABELS[e.action_taken] ?? e.action_taken,
     e.root_cause ? ROOT_CAUSE_LABELS[e.root_cause] : "--",
-    `$${e.repair_cost.toLocaleString("es-ES")}`,
+    formatMoney(e.repair_cost),
   ]);
 
   autoTable(doc, {
     startY: 24,
     head: [[
-      "Vehiculo", "Tipo", "Estado", "Falla", "Entrada", "Salida",
+      "Unidad", "Tipo", "Estado", "Falla", "Entrada", "Salida",
       "Horas", "Categoria", "Componente", "Accion", "Causa", "Costo",
     ]],
     body,

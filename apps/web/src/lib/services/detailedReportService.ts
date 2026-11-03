@@ -44,6 +44,7 @@ export interface ReportSummary {
   closed: number;
   blocked: number;
   costTotal: number;
+  costUnknown: number;
   hoursTotal: number;
   indicators: Indicators;
   bySystem: ReportBreakdown[];
@@ -90,11 +91,15 @@ export function applyReportFilters(
   const vehicleMap = new Map(vehicles.map((v) => [v.vehicle_id, v]));
   const from = startOfDay(filters.dateFrom);
   const to = endOfDay(filters.dateTo);
+  const eventUnits = new Set(events.map((e) => e.vehicle_id));
+  const filterByUnit =
+    filters.vehicleIds.length > 0 &&
+    !Array.from(eventUnits).every((id) => filters.vehicleIds.includes(id));
 
   return events.filter((e) => {
     const t = new Date(e.failure_timestamp).getTime();
     if (!Number.isNaN(t) && (t < from || t > to)) return false;
-    if (filters.vehicleIds.length > 0 && filters.vehicleIds.length < vehicles.length && !filters.vehicleIds.includes(e.vehicle_id)) return false;
+    if (filterByUnit && !filters.vehicleIds.includes(e.vehicle_id)) return false;
     if (filters.eventTypes.length > 0 && !filters.eventTypes.includes(e.event_type)) return false;
     if (!matchesStatus(e, filters.statuses)) return false;
     if (filters.systems.length > 0 && !filters.systems.includes(e.system_category as string)) return false;
@@ -125,8 +130,21 @@ function breakdown(
     .sort((a, b) => b.count - a.count || b.cost - a.cost);
 }
 
-export function buildReportSummary(events: MaintenanceEvent[], vehicles: Vehicle[]): ReportSummary {
+export interface ReportLabelMaps {
+  systems?: Record<string, string>;
+  components?: Record<string, string>;
+  rootCauses?: Record<string, string>;
+}
+
+export function buildReportSummary(
+  events: MaintenanceEvent[],
+  vehicles: Vehicle[],
+  labels: ReportLabelMaps = {}
+): ReportSummary {
   const vehicleMap = new Map(vehicles.map((v) => [v.vehicle_id, v]));
+  const systemLabel = (e: MaintenanceEvent) => labels.systems?.[e.system_category as string] ?? (e.system_category as string) ?? "Sin sistema";
+  const componentLabel = (e: MaintenanceEvent) => labels.components?.[e.component_id] ?? e.component_id ?? "Sin componente";
+  const causeLabel = (e: MaintenanceEvent) => (e.root_cause ? labels.rootCauses?.[e.root_cause] ?? e.root_cause : "Sin causa");
   return {
     total: events.length,
     corrective: events.filter((e) => e.event_type === "CORRECTIVE").length,
@@ -137,13 +155,14 @@ export function buildReportSummary(events: MaintenanceEvent[], vehicles: Vehicle
     closed: events.filter((e) => e.status === "COMPLETED").length,
     blocked: events.filter(isBlocked).length,
     costTotal: events.reduce((sum, e) => sum + (e.repair_cost || 0), 0),
+    costUnknown: events.filter((e) => e.repair_cost == null).length,
     hoursTotal: events.reduce((sum, e) => sum + (e.effective_work_hours ?? 0), 0),
     indicators: calculateIndicators(events),
-    bySystem: breakdown(events, (e) => (e.system_category as string) || "Sin sistema"),
+    bySystem: breakdown(events, systemLabel),
     byVehicle: breakdown(events, (e) => e.vehicle_id),
     byFleetGroup: breakdown(events, (e) => vehicleMap.get(e.vehicle_id)?.fleet_group?.trim() || "Sin grupo"),
-    byComponent: breakdown(events, (e) => e.component_id || "Sin componente"),
-    byRootCause: breakdown(events, (e) => e.root_cause || "Sin causa"),
+    byComponent: breakdown(events, componentLabel),
+    byRootCause: breakdown(events, causeLabel),
   };
 }
 

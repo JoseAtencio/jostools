@@ -104,6 +104,8 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
   const [systems, setSystems] = useState<Category[]>([]);
   const [components, setComponents] = useState<Category[]>([]);
   const [rootCauses, setRootCauses] = useState<Category[]>([]);
+  const [plantSystems, setPlantSystems] = useState<Category[]>([]);
+  const [plantComponents, setPlantComponents] = useState<Category[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [generating, setGenerating] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
@@ -122,37 +124,56 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
       getCategoriesByGroup("system_category"),
       getCategoriesByGroup("component"),
       getCategoriesByGroup("root_cause"),
+      getCategoriesByGroup("plant_system"),
+      getCategoriesByGroup("plant_component"),
     ])
-      .then(([vehs, sys, comp, cause]) => {
+      .then(([vehs, sys, comp, cause, plantSys, plantComp]) => {
         setVehicles(vehs);
         setSystems(sys);
         setComponents(comp);
         setRootCauses(cause);
+        setPlantSystems(plantSys);
+        setPlantComponents(plantComp);
       })
       .catch(() => undefined)
       .finally(() => setLoadingData(false));
   }, [open, user?.enterpriseId]);
 
   const filtered = useMemo(() => applyReportFilters(events, filters, vehicles), [events, filters, vehicles]);
-  const summary = useMemo(() => buildReportSummary(filtered, vehicles), [filtered, vehicles]);
 
-  const vehicleOptions = useMemo<MultiSelectOption[]>(
-    () =>
-      vehicles.map((v) => ({
-        value: v.vehicle_id,
-        label: v.vehicle_id,
-        hint: [v.vehicle_code, v.brand, v.model, v.fleet_group].filter(Boolean).join(" · "),
-      })),
-    [vehicles]
+  const labelMaps = useMemo(
+    () => ({
+      systems: Object.fromEntries([...systems, ...plantSystems].map((c) => [c.name, c.label])),
+      components: Object.fromEntries([...components, ...plantComponents].map((c) => [c.name, c.label])),
+      rootCauses: Object.fromEntries(rootCauses.map((c) => [c.name, c.label])),
+    }),
+    [systems, plantSystems, components, plantComponents, rootCauses]
   );
+  const summary = useMemo(() => buildReportSummary(filtered, vehicles, labelMaps), [filtered, vehicles, labelMaps]);
+
+  const vehicleOptions = useMemo<MultiSelectOption[]>(() => {
+    const list: MultiSelectOption[] = vehicles.map((v) => ({
+      value: v.vehicle_id,
+      label: v.vehicle_id,
+      hint: [v.vehicle_code, v.brand, v.model, v.fleet_group].filter(Boolean).join(" · "),
+    }));
+    const known = new Set(list.map((o) => o.value));
+    events.forEach((e) => {
+      if (e.asset_type === "PLANT" && !known.has(e.vehicle_id)) {
+        list.push({ value: e.vehicle_id, label: e.vehicle_id, hint: "Planta de asfalto" });
+        known.add(e.vehicle_id);
+      }
+    });
+    return list;
+  }, [vehicles, events]);
 
   const systemOptions = useMemo(
-    () => mergeOptions(systems, events.map((e) => e.system_category as string)),
-    [systems, events]
+    () => mergeOptions([...systems, ...plantSystems], events.map((e) => e.system_category as string)),
+    [systems, plantSystems, events]
   );
   const componentOptions = useMemo(
-    () => mergeOptions(components, events.map((e) => e.component_id)),
-    [components, events]
+    () => mergeOptions([...components, ...plantComponents], events.map((e) => e.component_id)),
+    [components, plantComponents, events]
   );
   const rootCauseOptions = useMemo(
     () => mergeOptions(rootCauses, events.map((e) => e.root_cause ?? "")),
@@ -193,6 +214,7 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
       await exportDetailedReport({
         events: filtered,
         summary,
+        vehicles,
         rangeLabel: formatRangeLabel(filters),
         chartsElement: chartsRef.current,
         topVehiclesElement: topVehiclesRef.current,
@@ -279,16 +301,16 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
               </div>
             </FilterCard>
 
-            <FilterCard title="Vehiculos" hint="Placa, codigo, marca o modelo">
+            <FilterCard title="Unidades" hint="Placa, codigo, marca o modelo">
               <MultiSelectFilter
                 label=""
                 options={vehicleOptions}
                 selected={filters.vehicleIds}
                 onChange={(v) => setFilter("vehicleIds", v)}
                 searchable
-                searchPlaceholder="Buscar vehiculo..."
+                searchPlaceholder="Buscar unidad..."
                 maxHeight={150}
-                emptyText="No hay vehiculos en el catalogo"
+                emptyText="No hay unidades en el catalogo"
               />
             </FilterCard>
 

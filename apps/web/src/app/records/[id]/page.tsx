@@ -21,6 +21,8 @@ import {
   EVENT_STATUS_LABELS,
   BLOCK_REASON_LABELS,
   BLOCK_REASON_OPTIONS,
+  formatMoney,
+  ASSET_TYPE_LABELS,
   type MaintenanceEvent,
 } from "@/types/maintenance";
 import type { Vehicle } from "@/types/vehicle";
@@ -138,7 +140,9 @@ export default function EventDetailPage() {
   const stayHours = hoursBetween(event.workshop_entry_time, event.workshop_exit_time);
 
   const items: { label: string; value: string; help?: string }[] = [
-    { label: "Vehiculo", value: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year || ""}`.trim() : event.vehicle_id, help: vehicle ? "Datos del catalogo de vehiculos." : "Este vehiculo no esta en el catalogo; se muestra solo la matricula." },
+    { label: "Tipo de activo", value: ASSET_TYPE_LABELS[event.asset_type ?? "VEHICLE"], help: "Vehiculo de la flota o equipo de la planta de asfalto." },
+    { label: event.asset_type === "PLANT" ? "Equipo / Planta" : "Vehiculo", value: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year || ""}`.trim() : event.vehicle_id, help: vehicle ? "Datos del catalogo de vehiculos." : "Esta unidad no esta en el catalogo; se muestra solo el codigo." },
+    ...(vehicle?.vehicle_code ? [{ label: "Codigo de unidad", value: vehicle.vehicle_code }] : []),
     { label: "Odometro / Horas", value: event.current_odometer != null ? event.current_odometer.toLocaleString("es-ES") : "--" },
     { label: "Tipo de evento", value: EVENT_TYPE_LABELS[event.event_type] ?? event.event_type },
     { label: "Estado", value: EVENT_STATUS_LABELS[event.status || "PENDING"] },
@@ -151,7 +155,7 @@ export default function EventDetailPage() {
     { label: "Accion realizada", value: ACTION_TYPE_LABELS[event.action_taken] ?? event.action_taken },
     { label: "Causa raiz", value: event.root_cause ? ROOT_CAUSE_LABELS[event.root_cause] : "--" },
     { label: "Horas efectivas", value: event.effective_work_hours != null ? `${event.effective_work_hours} h` : isOpen ? "Se determina al cierre" : "--", help: isOpen ? "Las horas se registran al cerrar el evento." : "Horas reales de trabajo del tecnico." },
-    { label: "Costo reparacion", value: `$${event.repair_cost.toLocaleString("es-ES")}` },
+    { label: "Costo reparacion", value: formatMoney(event.repair_cost) },
     { label: "Observacion", value: event.observation?.trim() ? event.observation : "--" },
     ...(event.block_reason ? [{ label: "Motivo de bloqueo", value: BLOCK_REASON_LABELS[event.block_reason] ?? event.block_reason }] : []),
     { label: "Creado", value: formatDateTime(event.created_at) },
@@ -176,6 +180,11 @@ export default function EventDetailPage() {
               Evento {event.vehicle_id}
               <HelpTip title="Detalle del evento" text="Informacion completa del evento de mantenimiento. Si esta abierto puedes editarlo o cerrarlo; si esta cerrado puedes reabrirlo. Toda modificacion queda registrada en el historial de ediciones." />
             </h1>
+            {event.asset_type === "PLANT" && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: "rgba(102, 153, 145, 0.15)", color: "var(--ash-grey-400)" }}>
+                Planta de asfalto
+              </span>
+            )}
             <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{
               backgroundColor: isOpen ? "rgba(247, 183, 8, 0.15)" : "rgba(102, 153, 145, 0.15)",
               color: isOpen ? "var(--tuscan-sun-400)" : "var(--ash-grey-400)",
