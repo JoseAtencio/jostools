@@ -3,7 +3,7 @@ export type ActionType = "REPAIRED" | "REPLACED" | "ADJUSTED";
 export type AssetType = "VEHICLE" | "PLANT";
 export type SystemCategory = "ENGINE" | "TRANSMISSION" | "BRAKES" | "ELECTRICAL" | "TIRES" | "SUSPENSION" | "OTHER";
 export type RootCause = "WEAR_AND_TEAR" | "OPERATOR_ERROR" | "PART_DEFECT" | "ACCIDENT";
-export type EventStatus = "PENDING" | "COMPLETED";
+export type EventStatus = "PENDING" | "COMPLETED" | "DELETED";
 
 export interface EditChange {
   field: string;
@@ -40,6 +40,9 @@ export interface MaintenanceEvent {
   edited_at?: string;
   edited_by?: string;
   edit_history?: EditHistoryEntry[];
+  deleted_at?: string;
+  deleted_by?: string;
+  previous_status?: EventStatus;
   observation?: string;
   block_reason?: string;
 }
@@ -86,6 +89,7 @@ export const ROOT_CAUSE_LABELS: Record<RootCause, string> = {
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   PENDING: "Abierto",
   COMPLETED: "Cerrado",
+  DELETED: "Borrado",
 };
 
 export const ASSET_TYPE_LABELS: Record<AssetType, string> = {

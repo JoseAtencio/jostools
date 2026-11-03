@@ -70,7 +70,7 @@ export default function ReportsPage() {
   const loadData = () => {
     if (!user?.enterpriseId) return;
     Promise.all([getMaintenanceEvents(user.enterpriseId), getVehicles(user.enterpriseId)]).then(([evs, vehs]) => {
-      setEvents(evs);
+      setEvents(evs.filter((e) => e.status !== "DELETED"));
       setVehicles(vehs);
       setLoading(false);
     }).catch(() => {

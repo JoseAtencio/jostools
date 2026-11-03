@@ -169,7 +169,8 @@ const sections: Section[] = [
       { name: "Acciones del detalle", desc: "Editar y Cerrar Evento (solo si esta abierto), Reabrir (solo si esta cerrado), Exportar (Excel o PDF) y Volver. En la lista, la columna Accion trae los mismos botones con iconos." },
       { name: "Edicion y reabrir eventos", desc: "Se editan odometro, fechas, tipo, sistema, componente, accion y causa, observacion y motivo de bloqueo. La matricula no cambia y horas, costo y salida se determinan al cierre. Los eventos cerrados se reabren desde su detalle o desde Editar (boton 'Reabrir'): vuelven a estado Abierto y se limpian salida, horas y costo." },
       { name: "Columna Ediciones e historial", desc: "La columna 'Ediciones' de la lista marca los eventos modificados con el badge 'Editado' y el numero de modificaciones. En el detalle, la seccion 'Historial de ediciones' muestra fecha, usuario y cada campo cambiado con su valor anterior y el nuevo." },
-      { name: "Estados", desc: "'Abierto' (amarillo) = vehiculo en taller. 'Cerrado' (verde) = evento finalizado con todos sus datos." },
+      { name: "Marcar como borrado", desc: "El icono de papelera de la columna Accion marca el registro como borrado: queda en gris con el estado 'Borrado', sale de los reportes y no se puede exportar. No se elimina de la base de datos: entra al detalle y usa 'Restaurar' para recuperarlo." },
+      { name: "Estados", desc: "'Abierto' (amarillo) = vehiculo en taller. 'Cerrado' (verde) = evento finalizado con todos sus datos. 'Borrado' (gris) = registro descartado que no cuenta en reportes." },
     ],
   },
   {

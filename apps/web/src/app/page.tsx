@@ -124,7 +124,7 @@ export default function Home() {
     setLoadingData(true);
     try {
       const events = await getMaintenanceEvents(user.enterpriseId);
-      setAllEvents(events);
+      setAllEvents(events.filter((e) => e.status !== "DELETED"));
     } catch (err) {
       console.error("Error loading data:", err);
     } finally {

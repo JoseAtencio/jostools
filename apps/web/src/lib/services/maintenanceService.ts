@@ -77,6 +77,26 @@ function buildUpdateData(data: Partial<MaintenanceEventInput>): Record<string, u
   return updateData;
 }
 
+export async function markEventDeleted(id: string, userName: string, previousStatus: string): Promise<void> {
+  await updateDoc(doc(db, "jostools", "config", "maintenance_events", id), {
+    status: "DELETED",
+    previous_status: previousStatus === "COMPLETED" ? "COMPLETED" : "PENDING",
+    deleted_at: new Date().toISOString(),
+    deleted_by: userName,
+  });
+}
+
+export async function restoreEvent(id: string): Promise<void> {
+  const snap = await getDoc(doc(db, "jostools", "config", "maintenance_events", id));
+  const previous = snap.exists() ? (snap.data()?.previous_status as string | undefined) : undefined;
+  await updateDoc(doc(db, "jostools", "config", "maintenance_events", id), {
+    status: previous === "COMPLETED" ? "COMPLETED" : "PENDING",
+    previous_status: null,
+    deleted_at: null,
+    deleted_by: null,
+  });
+}
+
 export function formatHistoryValue(field: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "vacio";
   if (field === "status") return EVENT_STATUS_LABELS[value as "PENDING" | "COMPLETED"] ?? String(value);

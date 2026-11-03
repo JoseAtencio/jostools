@@ -23,7 +23,8 @@ function isValidDate(iso: string | undefined | null): boolean {
   return !Number.isNaN(new Date(iso).getTime());
 }
 
-export function calculateIndicators(events: MaintenanceEvent[]): Indicators {
+export function calculateIndicators(allEvents: MaintenanceEvent[]): Indicators {
+  const events = allEvents.filter((e) => e.status !== "DELETED");
   if (events.length === 0) {
     return { mtbf: null, mttr: null, mttf: null, availability: null, totalEvents: 0, correctiveCount: 0, preventiveCount: 0, inspectionCount: 0 };
   }

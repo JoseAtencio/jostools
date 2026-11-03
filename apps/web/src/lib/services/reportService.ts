@@ -70,6 +70,7 @@ function groupCount(events: MaintenanceEvent[], keyOf: (e: MaintenanceEvent) => 
 
 export function buildReport(events: MaintenanceEvent[], vehicles: Vehicle[], monthKey: string): ReportData | null {
   if (!monthKey) return null;
+  events = events.filter((e) => e.status !== "DELETED");
   const [y, m] = monthKey.split("-").map(Number);
   const start = new Date(y, m - 1, 1).getTime();
   const end = new Date(y, m, 1).getTime();
