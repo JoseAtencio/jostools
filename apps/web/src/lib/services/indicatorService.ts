@@ -23,7 +23,43 @@ function isValidDate(iso: string | undefined | null): boolean {
   return !Number.isNaN(new Date(iso).getTime());
 }
 
-export function calculateIndicators(allEvents: MaintenanceEvent[]): Indicators {
+function groupByUnit(events: MaintenanceEvent[]): Map<string, MaintenanceEvent[]> {
+  const map = new Map<string, MaintenanceEvent[]>();
+  events.forEach((e) => {
+    const list = map.get(e.vehicle_id) ?? [];
+    list.push(e);
+    map.set(e.vehicle_id, list);
+  });
+  return map;
+}
+
+function operatingHoursForUnit(unitEvents: MaintenanceEvent[], endTime: number): number {
+  const failures = unitEvents
+    .map((e) => new Date(e.failure_timestamp).getTime())
+    .filter((t) => !Number.isNaN(t));
+  if (failures.length === 0) return 0;
+  const firstFailure = Math.min(...failures);
+  const observation = Math.max(0, (endTime - firstFailure) / 3600000);
+  const downtime = unitEvents.reduce((sum, e) => {
+    const h = hoursBetween(e.failure_timestamp, e.workshop_exit_time);
+    return sum + (Number.isFinite(h) && h > 0 ? h : 0);
+  }, 0);
+  return Math.max(0, observation - downtime);
+}
+
+// MTBF de flota: suma las horas de operacion de cada unidad y divide entre el total de
+// correctivos. Asi el tiempo en taller de una unidad no resta horas de las demas.
+function fleetMtbf(corrective: MaintenanceEvent[], endTime: number): number | null {
+  if (corrective.length === 0) return null;
+  let operating = 0;
+  groupByUnit(corrective).forEach((unitEvents) => {
+    operating += operatingHoursForUnit(unitEvents, endTime);
+  });
+  const result = operating / corrective.length;
+  return Number.isFinite(result) && result > 0 ? Math.round(result * 10) / 10 : null;
+}
+
+export function calculateIndicators(allEvents: MaintenanceEvent[], options: { endTime?: number } = {}): Indicators {
   const events = allEvents.filter((e) => e.status !== "DELETED");
   if (events.length === 0) {
     return { mtbf: null, mttr: null, mttf: null, availability: null, totalEvents: 0, correctiveCount: 0, preventiveCount: 0, inspectionCount: 0 };
@@ -46,16 +82,10 @@ export function calculateIndicators(allEvents: MaintenanceEvent[]): Indicators {
     : null;
 
   // --- MTBF: (Tiempo Total de Operación - Tiempo Total Inactividad) / N Correctivos ---
-  let mtbf: number | null = null;
-  if (corrective.length >= 1) {
-    const allEvents = [...events].sort((a, b) => new Date(a.failure_timestamp).getTime() - new Date(b.failure_timestamp).getTime());
-    const primeraFalla = new Date(allEvents[0].failure_timestamp).getTime();
-    const ahora = Date.now();
-    const totalObservacion = (ahora - primeraFalla) / 3600000;
-    const totalInactividad = closedCorrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0);
-    const result = (totalObservacion - totalInactividad) / corrective.length;
-    mtbf = result !== null && !isNaN(result) && result > 0 ? Math.round(result * 10) / 10 : null;
-  }
+  // Se calcula por unidad: cada unidad aporta sus horas de operacion desde su primera falla
+  // del periodo hasta el cierre del periodo, menos su propio tiempo en taller.
+  const endTime = Math.min(options.endTime ?? Date.now(), Date.now());
+  const mtbf = fleetMtbf(corrective, endTime);
 
   // --- MTTF: solo componentes REPLACED (consumibles) ---
   const replaced = events.filter((e) => e.action_taken === "REPLACED");
@@ -150,7 +180,6 @@ export function getMTBFMTTRTrend(events: MaintenanceEvent[]): TrendPoint[] {
 
   const sorted = Array.from(byMonth.entries()).sort(([a], [b]) => a.localeCompare(b));
 
-  let prevCorrectiveTimestamp: number | null = null;
   return sorted.map(([month, monthEvents]) => {
     const corrective = monthEvents
       .filter((e) => e.event_type === "CORRECTIVE")
@@ -158,17 +187,10 @@ export function getMTBFMTTRTrend(events: MaintenanceEvent[]): TrendPoint[] {
 
     const closedCorrective = corrective.filter((e) => isValidDate(e.workshop_exit_time));
 
-    let mtbf: number | null = null;
-    if (corrective.length >= 2) {
-      const totalH = hoursBetween(corrective[0].failure_timestamp, corrective[corrective.length - 1].failure_timestamp);
-      const downtime = closedCorrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0);
-      mtbf = (totalH - downtime) / corrective.length;
-    } else if (corrective.length === 1 && prevCorrectiveTimestamp !== null) {
-      mtbf = (new Date(corrective[0].failure_timestamp).getTime() - prevCorrectiveTimestamp) / 3600000;
-    }
-    if (corrective.length >= 1) {
-      prevCorrectiveTimestamp = new Date(corrective[corrective.length - 1].failure_timestamp).getTime();
-    }
+    const [year, monthNumber] = month.split("-").map(Number);
+    const monthEnd = new Date(year, monthNumber, 1).getTime();
+    const endTime = Math.min(Number.isNaN(monthEnd) ? Date.now() : monthEnd, Date.now());
+    const mtbf = fleetMtbf(corrective, endTime);
 
     const mttr = closedCorrective.length > 0
       ? closedCorrective.reduce((sum, e) => sum + hoursBetween(e.failure_timestamp, e.workshop_exit_time), 0) / closedCorrective.length
@@ -176,7 +198,7 @@ export function getMTBFMTTRTrend(events: MaintenanceEvent[]): TrendPoint[] {
 
     return {
       month,
-      mtbf: mtbf && !isNaN(mtbf) && mtbf > 0 ? Math.round(mtbf * 10) / 10 : null,
+      mtbf: mtbf != null && mtbf > 0 ? mtbf : null,
       mttr: mttr && !isNaN(mttr) ? Math.round(mttr * 10) / 10 : null,
     };
   });

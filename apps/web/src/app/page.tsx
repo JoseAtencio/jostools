@@ -101,7 +101,10 @@ export default function Home() {
   const openEvents = useMemo(() => allEvents.filter((e) => e.status === "PENDING"), [allEvents]);
   const completedEvents = useMemo(() => filteredEvents.filter((e) => e.status === "COMPLETED"), [filteredEvents]);
 
-  const indicators = useMemo(() => calculateIndicators(completedEvents), [completedEvents]);
+  const indicators = useMemo(() => {
+    const endTime = filters.dateTo ? new Date(new Date(filters.dateTo).setHours(23, 59, 59, 999)).getTime() : undefined;
+    return calculateIndicators(completedEvents, { endTime });
+  }, [completedEvents, filters.dateTo]);
   const pieData = useMemo(() => getEventTypePieData(filteredEvents), [filteredEvents]);
   const barData = useMemo(() => getMonthlyBarData(filteredEvents), [filteredEvents]);
   const costData = useMemo(() => getCostByCategoryData(filteredEvents), [filteredEvents]);

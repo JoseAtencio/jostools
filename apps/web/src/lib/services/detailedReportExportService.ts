@@ -234,7 +234,7 @@ function drawGlossaryPage(doc: jsPDF, summary: ReportSummary): void {
     doc,
     "MTBF - Tiempo Medio Entre Fallas",
     formatIndicator(summary.indicators.mtbf, " h"),
-    "Horas promedio que el vehiculo permanece operando entre una falla correctiva y la siguiente. Cuanto mas alto es, menos falla la flota. Se calcula con la fecha de falla y la fecha de salida del taller de los eventos correctivos: (tiempo total observado - tiempo en el taller) / numero de correctivos.",
+    "Horas promedio que la flota permanece operando entre una falla correctiva y la siguiente. Cuanto mas alto es, menos falla. Se calcula por unidad (desde su primera falla hasta el cierre del periodo, menos su tiempo en taller) y se suman las horas de operacion de todas las unidades; luego se divide entre el numero de correctivos.",
     y
   );
   y = drawIndicator(

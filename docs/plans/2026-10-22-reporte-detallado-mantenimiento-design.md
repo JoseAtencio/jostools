@@ -83,9 +83,15 @@ Modificados:
 Correccion en `indicatorService`:
 - `hoursBetween` devuelve `NaN` de forma explicita si alguna fecha no es valida.
 - El MTTR se promedia solo sobre correctivos con salida registrada; si no hay ninguno, queda `null` y se muestra "--".
-- La inactividad acumulada del MTBF usa solo los correctivos medibles, asi que el MTBF si se calcula cuando hay correctivos cerrados.
+- La inactividad acumulada del MTBF usa solo los correctivos medibles.
 - `getMTBFMTTRTrend` aplica la misma regla.
 - Se agrega `formatIndicator(valor, sufijo)` que nunca imprime `NaN` y se usa en el PDF detallado, el modal del reporte, el PDF mensual, el Excel de eventos y la vista de informes.
+
+## Fix del MTBF en flota
+
+Con muchos correctivos en el periodo, el MTBF no aparecia: el calculo tomaba una sola linea de tiempo (de la primera falla de cualquier unidad hasta hoy) y le restaba el tiempo en taller de **todas** las unidades. Con 33 correctivos y 2.7 dias de MTTR, la inactividad superaba el periodo y el resultado era negativo, asi que se descartaba (`> 0`).
+
+Ahora el MTBF se calcula **por unidad** (`operatingHoursForUnit`): cada unidad aporta sus horas desde su primera falla del periodo hasta el cierre del periodo, menos su propio tiempo en taller; se suman las horas de todas las unidades y se dividen entre el total de correctivos (`fleetMtbf`). La tendencia mensual usa la misma funcion con el fin de cada mes. Verificado con el caso de octubre: MTBF anterior -40.3 h (se ocultaba) y nuevo 195.6 h con disponibilidad 75.1%.
 
 ## Cambios pedidos por el cliente
 

@@ -140,7 +140,8 @@ export interface ReportLabelMaps {
 export function buildReportSummary(
   events: MaintenanceEvent[],
   vehicles: Vehicle[],
-  labels: ReportLabelMaps = {}
+  labels: ReportLabelMaps = {},
+  options: { endTime?: number } = {}
 ): ReportSummary {
   const vehicleMap = new Map(vehicles.map((v) => [v.vehicle_id, v]));
   const systemLabel = (e: MaintenanceEvent) => labels.systems?.[e.system_category as string] ?? (e.system_category as string) ?? "Sin sistema";
@@ -158,7 +159,7 @@ export function buildReportSummary(
     costTotal: events.reduce((sum, e) => sum + (e.repair_cost || 0), 0),
     costUnknown: events.filter((e) => e.repair_cost == null).length,
     hoursTotal: events.reduce((sum, e) => sum + (e.effective_work_hours ?? 0), 0),
-    indicators: calculateIndicators(events),
+    indicators: calculateIndicators(events, options),
     bySystem: breakdown(events, systemLabel),
     byVehicle: breakdown(events, (e) => e.vehicle_id),
     byFleetGroup: breakdown(events, (e) => vehicleMap.get(e.vehicle_id)?.fleet_group?.trim() || "Sin grupo"),
