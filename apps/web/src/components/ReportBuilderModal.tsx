@@ -107,7 +107,7 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
   const [plantSystems, setPlantSystems] = useState<Category[]>([]);
   const [plantComponents, setPlantComponents] = useState<Category[]>([]);
   const [loadingData, setLoadingData] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState<"download" | "preview" | null>(null);
   const chartsRef = useRef<HTMLDivElement>(null);
   const topVehiclesRef = useRef<HTMLDivElement>(null);
 
@@ -211,21 +211,68 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
 
   const pct = (n: number) => (summary.total > 0 ? Math.round((n / summary.total) * 1000) / 10 : 0);
 
-  const handleGenerate = async () => {
-    setGenerating(true);
+  const buildPdf = () =>
+    exportDetailedReport({
+      events: filtered,
+      summary,
+      vehicles,
+      rangeLabel: formatRangeLabel(filters),
+      chartsElement: chartsRef.current,
+      topVehiclesElement: topVehiclesRef.current,
+    });
+
+  const handleDownload = async () => {
+    setGenerating("download");
     try {
-      await exportDetailedReport({
-        events: filtered,
-        summary,
-        vehicles,
-        rangeLabel: formatRangeLabel(filters),
-        chartsElement: chartsRef.current,
-        topVehiclesElement: topVehiclesRef.current,
-      });
+      const { blob, fileName } = await buildPdf();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch {
       alert("No se pudo generar el PDF. Intenta de nuevo.");
     } finally {
-      setGenerating(false);
+      setGenerating(null);
+    }
+  };
+
+  const handlePreview = async () => {
+    const previewWindow = window.open("", "_blank");
+    if (previewWindow) {
+      try {
+        previewWindow.document.write(
+          "<!doctype html><html><head><title>Preparando reporte...</title></head><body style=\"font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#52525b\"><p>Preparando el reporte...</p></body></html>"
+        );
+        previewWindow.document.close();
+      } catch {
+        // si el navegador no permite escribir en la ventana, se navega al PDF al terminar
+      }
+    }
+    setGenerating("preview");
+    try {
+      const { blob } = await buildPdf();
+      const url = URL.createObjectURL(blob);
+      if (previewWindow) {
+        previewWindow.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+      } else {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "Reporte_Mantenimiento.pdf";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
+    } catch {
+      previewWindow?.close();
+      alert("No se pudo generar el PDF. Intenta de nuevo.");
+    } finally {
+      setGenerating(null);
     }
   };
 
@@ -435,15 +482,34 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
             </button>
             <button
               type="button"
-              onClick={handleGenerate}
-              disabled={generating || filtered.length === 0}
+              onClick={handlePreview}
+              disabled={generating !== null || filtered.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "var(--graphite-800)", color: "var(--graphite-200)", border: "1px solid var(--graphite-700)" }}
+            >
+              {generating === "preview" ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  Preparando...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  Ver reporte
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={generating !== null || filtered.length === 0}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--tuscan-sun-500)", color: "var(--graphite-950)" }}
             >
-              {generating ? (
+              {generating === "download" ? (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  Generando...
+                  Descargando...
                 </>
               ) : (
                 <>

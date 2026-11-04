@@ -14,6 +14,11 @@ import type { ReportSummary } from "./detailedReportService";
 import { formatIndicator } from "./indicatorService";
 import type { Vehicle } from "@/types/vehicle";
 
+export interface DetailedReportResult {
+  blob: Blob;
+  fileName: string;
+}
+
 export interface DetailedReportParams {
   events: MaintenanceEvent[];
   summary: ReportSummary;
@@ -309,7 +314,7 @@ export async function exportDetailedReport({
   rangeLabel,
   chartsElement,
   topVehiclesElement,
-}: DetailedReportParams): Promise<void> {
+}: DetailedReportParams): Promise<DetailedReportResult> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const vehicleMap = new Map(vehicles.map((v) => [v.vehicle_id, v]));
   const unitLabelOf = (vehicleId: string) => {
@@ -475,5 +480,6 @@ export async function exportDetailedReport({
     doc.text(`Pagina ${i} de ${total}`, w - MARGIN, h - 6.5, { align: "right" });
   }
 
-  doc.save(`Reporte_Mantenimiento_${new Date().toISOString().slice(0, 10)}.pdf`);
+  const fileName = `Reporte_Mantenimiento_${new Date().toISOString().slice(0, 10)}.pdf`;
+  return { blob: doc.output("blob"), fileName };
 }
