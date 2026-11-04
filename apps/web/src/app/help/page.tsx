@@ -239,17 +239,17 @@ const sections: Section[] = [
             name: "MTBF - Tiempo Medio Entre Fallas (Mean Time Between Failures)",
             formula: "MTBF = (T_total_operacion - T_total_inactividad) / N_correctivos",
             description:
-              "Mide el tiempo promedio que transcurre entre fallas correctivas. Un MTBF alto significa que el vehiculo falla con menor frecuencia.",
+              "Mide el tiempo promedio que transcurre entre fallas correctivas. Un MTBF alto significa que la flota falla con menor frecuencia. Se calcula por unidad y luego se combinan las horas de operacion de toda la flota, para que el tiempo en taller de una unidad no reste horas de las demas.",
             requirement: "Requiere al menos 1 evento tipo Correctivo.",
             steps: [
-              "Se toma la fecha de la primera falla registrada como punto de inicio.",
-              "Se calcula el tiempo total de operacion desde esa primera falla hasta la fecha actual (hora actual). Este es el periodo de observacion.",
-              "Se suma el tiempo de inactividad de cada evento correctivo: (fecha de salida del taller - fecha de falla). Este es el tiempo que el vehiculo estuvo parado.",
-              "Se resta: Tiempo de operacion menos tiempo de inactividad = Tiempo efectivo de funcionamiento.",
-              "Se divide entre el numero de eventos correctivos para obtener el promedio.",
+              "Para cada unidad se toma la fecha de su primera falla del periodo como punto de inicio.",
+              "Se calcula su tiempo de observacion desde esa primera falla hasta el cierre del periodo (o la fecha actual).",
+              "Se resta el tiempo que esa unidad estuvo parada: la suma de (salida del taller - fecha de falla) de sus correctivos con salida registrada.",
+              "Se suman las horas de operacion de todas las unidades = tiempo efectivo de funcionamiento de la flota.",
+              "Se divide entre el numero total de eventos correctivos para obtener el promedio entre fallas.",
             ],
             example:
-              "Si un vehiculo tuvo su primera falla hace 300 horas, estuvo parado 40 horas en total, y tuvo 2 fallas correctivas: MTBF = (300 - 40) / 2 = 130 horas entre fallas.",
+              "Si la flota acumulo 6400 horas de operacion y tuvo 33 correctivos en el periodo: MTBF = 6400 / 33 = 194 horas entre fallas. Ojo: antes se restaba el tiempo en taller de todas las unidades a una sola linea de tiempo, por eso con muchos correctivos el resultado podia quedar negativo y no mostrarse.",
           },
           {
             name: "MTTR - Tiempo Medio de Reparacion (Mean Time To Repair)",

@@ -121,7 +121,7 @@ export function buildReport(events: MaintenanceEvent[], vehicles: Vehicle[], mon
     byFleetGroup,
     bySystem,
     costTotal,
-    indicators: calculateIndicators(monthEvents),
+    indicators: calculateIndicators(monthEvents, { endTime: Math.min(end, Date.now()) }),
   };
 }
 

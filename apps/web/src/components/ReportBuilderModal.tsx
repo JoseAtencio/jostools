@@ -149,7 +149,10 @@ export default function ReportBuilderModal({ open, onClose, events }: Props) {
     }),
     [systems, plantSystems, components, plantComponents, rootCauses]
   );
-  const summary = useMemo(() => buildReportSummary(filtered, vehicles, labelMaps), [filtered, vehicles, labelMaps]);
+  const summary = useMemo(() => {
+    const endTime = filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999`).getTime() : undefined;
+    return buildReportSummary(filtered, vehicles, labelMaps, { endTime });
+  }, [filtered, vehicles, labelMaps, filters.dateTo]);
 
   const vehicleOptions = useMemo<MultiSelectOption[]>(() => {
     const list: MultiSelectOption[] = vehicles.map((v) => ({
